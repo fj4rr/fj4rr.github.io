@@ -1,0 +1,18 @@
+<dialog class="lightbox" data-lightbox aria-label="Image viewer">
+  <button type="button" class="lb-close mono" data-lightbox-close aria-label="Close">esc ×</button>
+  <div class="lb-body" data-lightbox-body></div>
+  <p class="lb-cap mono" data-lightbox-caption></p>
+</dialog>
+
+<style>
+  .lightbox { border: 0; padding: 0; background: transparent; max-width: 96vw; max-height: 94vh; width: 96vw; height: 94vh; overflow: visible; }
+  .lightbox::backdrop { background: rgba(4, 6, 9, 0.88); backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.22s; }
+  .lightbox.is-open::backdrop { opacity: 1; }
+  .lb-body { width: 100%; height: calc(100% - 40px); display: grid; place-items: center; opacity: 0; transform: scale(0.97); transition: opacity 0.22s, transform 0.3s var(--ease); }
+  .lightbox.is-open .lb-body { opacity: 1; transform: none; }
+  .lb-body :global(img), .lb-body :global(svg) { max-width: 100%; max-height: 100%; width: auto; height: auto; border-radius: 8px; border: 1px solid var(--border); background: #0b1017; object-fit: contain; }
+  .lb-body :global(svg) { width: 100%; height: 100%; padding: 16px; }
+  .lb-cap { text-align: center; color: var(--text-2); font-size: 12.5px; margin: 10px 0 0; }
+  .lb-close { position: fixed; top: 16px; right: 18px; z-index: 2; background: var(--bg-2); color: var(--text-2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer; }
+  .lb-close:hover { color: var(--text); }
+</style>

@@ -1,0 +1,40 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ProjectCard from '../../components/ProjectCard.astro';
+import { getProjects } from '../../lib/utils';
+const projects = await getProjects();
+---
+
+<BaseLayout title="Projects" description="Security tools, monitoring platforms and research repositories by fj4rr_.">
+  <header class="page-head">
+    <div class="container">
+      <p class="eyebrow">Tools &amp; experiments</p>
+      <h1><span class="prompt">~/</span>projects</h1>
+      <p>Tooling and research repositories built alongside the analysis work. Descriptions come straight from each repository.</p>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="term-head mono" aria-hidden="true">
+      <span class="ps">fj4rr@lab</span>:<span class="pth">~/projects</span>$ ls -l <span class="cursor"></span>
+      <span class="total">total {projects.length}</span>
+    </div>
+    <div class={`grid ${projects.length === 1 ? 'is-single' : ''}`}>
+      {projects.map((p, i) => <div data-reveal={i % 2}><ProjectCard project={p} wide={projects.length === 1} /></div>)}
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .term-head { margin: 36px 0 20px; font-size: 13px; color: var(--text-2); display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+  .term-head .ps { color: var(--green); }
+  .term-head .pth { color: var(--accent); }
+  .term-head .total { margin-left: auto; color: var(--text-3); }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px; }
+  .grid.is-single { grid-template-columns: 1fr; }
+  .grid > div { display: flex; }
+  .grid > div > :global(*) { flex: 1; }
+  .slot { border: 1px dashed var(--border); border-radius: var(--radius); min-height: 160px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; font-size: 13px; color: var(--text-3); }
+  .slot .dim { font-size: 12px; color: #3a4b60; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+</style>

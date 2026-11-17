@@ -1,0 +1,156 @@
+---
+// Screenshot slideshow: prev/next buttons, keyboard arrows, swipe, thumbnails, click to enlarge.
+interface Props {
+  slides: { src: string; caption: string }[];
+  label?: string;
+}
+const { slides, label = 'Screenshots' } = Astro.props;
+const pad = (n: number) => String(n).padStart(2, '0');
+---
+
+<div class="ss" data-ss role="region" aria-roledescription="carousel" aria-label={label} tabindex="0">
+  <div class="ss-frame">
+    <div class="ss-bar mono">
+      <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span class="ss-name" data-ss-name>{slides[0]?.src.split('/').pop()}</span>
+      <span class="ss-count"><b data-ss-index>01</b> / {pad(slides.length)}</span>
+    </div>
+
+    <div class="ss-viewport" data-ss-viewport>
+      <ul class="ss-track" data-ss-track>
+        {slides.map((s, i) => (
+          <li class="ss-slide" aria-roledescription="slide" aria-label={`${i + 1} of ${slides.length}`} aria-hidden={i === 0 ? 'false' : 'true'}>
+            <img src={s.src} alt={s.caption} width="1380" height="860" loading={i < 2 ? 'eager' : 'lazy'} decoding="async" data-zoom draggable="false" />
+          </li>
+        ))}
+      </ul>
+      <button type="button" class="ss-btn prev" data-ss-prev aria-label="Previous screenshot">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" /></svg>
+      </button>
+      <button type="button" class="ss-btn next" data-ss-next aria-label="Next screenshot">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" /></svg>
+      </button>
+    </div>
+
+    <p class="ss-caption" aria-live="polite" data-ss-caption>{slides[0]?.caption}</p>
+  </div>
+
+  <div class="ss-thumbs" data-ss-thumbs role="tablist" aria-label="Choose a screenshot">
+    {slides.map((s, i) => (
+      <button type="button" role="tab" class="thumb" aria-selected={i === 0 ? 'true' : 'false'} aria-label={`Screenshot ${i + 1}: ${s.caption}`} data-ss-go={i}>
+        <img src={s.src} alt="" loading="lazy" width="138" height="86" />
+      </button>
+    ))}
+  </div>
+</div>
+
+<style>
+  .ss { outline: none; }
+  .ss:focus-visible .ss-frame { border-color: var(--accent-line); }
+  .ss-frame { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: #0b1017; }
+  .ss-bar { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--bg-2); font-size: 12px; color: var(--text-3); }
+  .dots { display: inline-flex; gap: 6px; }
+  .dots i { width: 9px; height: 9px; border-radius: 50%; border: 1px solid #3a4b60; display: block; }
+  .ss-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ss-count { margin-left: auto; white-space: nowrap; }
+  .ss-count b { color: var(--accent); font-weight: 500; }
+
+  .ss-viewport { position: relative; overflow: hidden; touch-action: pan-y; }
+  .ss-track { display: flex; list-style: none; margin: 0; padding: 0; transition: transform 0.45s var(--ease); will-change: transform; }
+  .ss-track.is-dragging { transition: none; }
+  .ss-slide { flex: 0 0 100%; }
+  .ss-slide img { width: 100%; height: auto; aspect-ratio: 1380 / 860; object-fit: contain; object-position: center; cursor: zoom-in; user-select: none; -webkit-user-drag: none; }
+
+  .ss-btn {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 42px; height: 42px; display: grid; place-items: center;
+    border-radius: 50%; border: 1px solid var(--border); background: rgba(8, 11, 16, 0.82);
+    color: var(--text); cursor: pointer; backdrop-filter: blur(6px);
+    transition: border-color 0.2s, background 0.2s, color 0.2s, opacity 0.2s;
+  }
+  .ss-btn:hover { border-color: var(--accent-line); color: var(--accent); background: rgba(8, 11, 16, 0.95); }
+  .ss-btn:disabled { opacity: 0.3; cursor: default; }
+  .ss-btn.prev { left: 14px; }
+  .ss-btn.next { right: 14px; }
+
+  .ss-caption { margin: 0; padding: 12px 16px; border-top: 1px solid var(--border-soft); font-size: 14px; color: var(--text-2); min-height: 3.2em; }
+
+  .ss-thumbs { display: flex; gap: 8px; margin-top: 12px; overflow-x: auto; padding: 2px 2px 8px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+  .thumb { flex: 0 0 auto; width: 104px; padding: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: #0b1017; cursor: pointer; opacity: 0.55; transition: opacity 0.2s, border-color 0.2s; }
+  .thumb img { width: 100%; height: auto; aspect-ratio: 1380 / 860; object-fit: cover; object-position: top; display: block; }
+  .thumb:hover { opacity: 0.85; }
+  .thumb[aria-selected='true'] { opacity: 1; border-color: var(--accent); }
+
+  @media (max-width: 640px) {
+    .ss-btn { width: 36px; height: 36px; }
+    .ss-btn.prev { left: 8px; }
+    .ss-btn.next { right: 8px; }
+    .thumb { width: 84px; }
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-ss]').forEach((root) => {
+    const track = root.querySelector<HTMLElement>('[data-ss-track]')!;
+    const viewport = root.querySelector<HTMLElement>('[data-ss-viewport]')!;
+    const slides = [...track.children] as HTMLElement[];
+    const prev = root.querySelector<HTMLButtonElement>('[data-ss-prev]')!;
+    const next = root.querySelector<HTMLButtonElement>('[data-ss-next]')!;
+    const idxEl = root.querySelector<HTMLElement>('[data-ss-index]')!;
+    const nameEl = root.querySelector<HTMLElement>('[data-ss-name]')!;
+    const capEl = root.querySelector<HTMLElement>('[data-ss-caption]')!;
+    const thumbs = [...root.querySelectorAll<HTMLButtonElement>('[data-ss-go]')];
+    const n = slides.length;
+    let i = 0;
+
+    const go = (k: number, focusThumb = false) => {
+      i = (k + n) % n; // wraps around at both ends
+      track.style.transform = `translateX(${-i * 100}%)`;
+      const img = slides[i].querySelector('img')!;
+      idxEl.textContent = String(i + 1).padStart(2, '0');
+      nameEl.textContent = img.getAttribute('src')!.split('/').pop()!;
+      capEl.textContent = img.alt;
+      slides.forEach((s, j) => s.setAttribute('aria-hidden', String(j !== i)));
+      thumbs.forEach((t, j) => t.setAttribute('aria-selected', String(j === i)));
+      const t = thumbs[i];
+      const box = t.parentElement!;
+      box.scrollTo({ left: t.offsetLeft - box.clientWidth / 2 + t.clientWidth / 2, behavior: 'smooth' });
+      if (focusThumb) t.focus();
+    };
+
+    prev.addEventListener('click', () => go(i - 1));
+    next.addEventListener('click', () => go(i + 1));
+    thumbs.forEach((t, j) => t.addEventListener('click', () => go(j)));
+    root.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); go(i - 1, document.activeElement?.hasAttribute('data-ss-go')); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); go(i + 1, document.activeElement?.hasAttribute('data-ss-go')); }
+    });
+
+    // swipe / drag
+    let x0 = 0, dx = 0, dragging = false, moved = false;
+    viewport.addEventListener('pointerdown', (e) => {
+      if ((e.target as HTMLElement).closest('.ss-btn')) return;
+      dragging = true; moved = false; x0 = e.clientX; dx = 0;
+      track.classList.add('is-dragging');
+    });
+    addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      dx = e.clientX - x0;
+      if (Math.abs(dx) > 6) moved = true;
+      track.style.transform = `translateX(calc(${-i * 100}% + ${dx}px))`;
+    });
+    const end = () => {
+      if (!dragging) return;
+      dragging = false;
+      track.classList.remove('is-dragging');
+      const w = viewport.clientWidth;
+      if (dx < -w * 0.15) go(i + 1);
+      else if (dx > w * 0.15) go(i - 1);
+      else go(i);
+    };
+    addEventListener('pointerup', end);
+    addEventListener('pointercancel', end);
+    // a drag should not open the lightbox
+    viewport.addEventListener('click', (e) => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
+  });
+</script>

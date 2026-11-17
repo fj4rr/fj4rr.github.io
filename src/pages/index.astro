@@ -1,0 +1,126 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Specimen from '../components/Specimen.astro';
+import PostCard from '../components/PostCard.astro';
+import ProjectCard from '../components/ProjectCard.astro';
+import { getPosts, getProjects } from '../lib/utils';
+import { SITE } from '../lib/site';
+
+const posts = await getPosts();
+const projects = (await getProjects()).filter((p) => p.data.featured);
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: SITE.name,
+  url: SITE.url,
+  description: SITE.description,
+};
+---
+
+<BaseLayout jsonLd={jsonLd}>
+  <section class="hero">
+    <div class="container hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow hero-in" style="--d:0">Cybersecurity Research &amp; Knowledge</p>
+        <h1 class="hero-in" style="--d:1">
+          <span>Malware Analysis.</span>
+          <span>Threat Research.</span>
+          <span class="accent">Technical Write-ups.</span>
+        </h1>
+        <p class="lede hero-in" style="--d:2">
+          Hello, I'm <span class="mono hl">fj4rr_</span>. Welcome to my collection of malware analysis reports, reverse engineering research,
+          cybersecurity projects, and technical tutorials.
+        </p>
+        <div class="cta hero-in" style="--d:3">
+          <a class="btn btn-primary" href="/blog/">Explore Research <span class="arr">→</span></a>
+          <a class="btn" href="/projects/">Browse Projects <span class="arr">→</span></a>
+        </div>
+        <dl class="stats hero-in" style="--d:4">
+          <div><dt>reports</dt><dd>{posts.length}</dd></div>
+          <div><dt>projects</dt><dd>{projects.length}</dd></div>
+        </dl>
+      </div>
+      <div class="hero-visual">
+        <Specimen />
+      </div>
+    </div>
+  </section>
+
+  <section class="section container" aria-labelledby="latest">
+    <div class="section-head">
+      <div>
+        <h2 id="latest"><span class="idx">01</span>Latest Research</h2>
+        <p>Malware analysis reports with the evidence behind each finding.</p>
+      </div>
+      <a class="section-link" href="/blog/">All research →</a>
+    </div>
+    <div class="latest">
+      {posts.slice(0, 1).map((p) => <div data-reveal><PostCard post={p} layout="feature" /></div>)}
+      {posts.length > 1 && (
+        <div class="latest-grid">
+          {posts.slice(1, 4).map((p, i) => <div data-reveal={i}><PostCard post={p} /></div>)}
+        </div>
+      )}
+    </div>
+  </section>
+
+  <section class="section container" aria-labelledby="featured-projects">
+    <div class="section-head">
+      <div>
+        <h2 id="featured-projects"><span class="idx">02</span>Featured Projects</h2>
+        <p>Tools and research repositories built alongside the analysis work.</p>
+      </div>
+      <a class="section-link" href="/projects/">All projects →</a>
+    </div>
+    <div class={`proj-grid ${projects.length === 1 ? 'is-single' : ''}`}>
+      {projects.map((p, i) => <div data-reveal={i}><ProjectCard project={p} wide={projects.length === 1} /></div>)}
+    </div>
+  </section>
+
+</BaseLayout>
+
+<style>
+  .hero { position: relative; padding: 56px 0 24px; overflow: hidden; }
+  .hero-visual { margin-right: -48px; }
+  .hero-grid { display: grid; grid-template-columns: 1fr 1.05fr; gap: 56px; align-items: center; min-height: min(78vh, 680px); }
+  .hero h1 { font-size: clamp(30px, 3.5vw, 54px); line-height: 1.04; letter-spacing: -0.035em; margin: 22px 0 0; font-weight: 600; }
+  .hero h1 > span { display: block; white-space: nowrap; }
+  .hero h1 .accent { color: var(--accent); }
+  .hero h1 .cursor { width: 3px; height: 0.8em; vertical-align: -0.04em; margin-left: 10px; background: var(--green); opacity: 0.85; }
+  .lede { color: var(--text-2); font-size: 17px; max-width: 52ch; margin: 26px 0 0; }
+  .lede .hl { color: var(--text); }
+  .cta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 32px; }
+  .stats { display: flex; gap: 32px; margin: 44px 0 0; padding: 18px 0 0; border-top: 1px solid var(--border-soft); max-width: 520px; }
+  .stats div { display: flex; flex-direction: column-reverse; gap: 2px; }
+  .stats dt { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.12em; }
+  .stats dd { margin: 0; font-family: var(--font-mono); font-size: 24px; color: var(--text); }
+  .stats dd span { font-size: 12px; color: var(--text-3); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .hero-in { opacity: 0; transform: translateY(12px); animation: heroIn 0.9s var(--ease) forwards; animation-delay: calc(var(--d) * 110ms + 80ms); }
+    .hero-visual { opacity: 0; animation: fadeIn 1.6s ease 0.2s forwards; }
+  }
+  @keyframes heroIn { to { opacity: 1; transform: none; } }
+  @keyframes fadeIn { to { opacity: 1; } }
+
+  .latest { display: grid; gap: 20px; }
+  .latest-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .proj-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; align-items: stretch; }
+  .proj-grid.is-single { grid-template-columns: 1fr; }
+  .proj-grid > div { display: flex; }
+  .proj-grid > div > :global(*) { flex: 1; }
+
+
+  @media (max-width: 1000px) {
+    .hero-grid { grid-template-columns: 1fr; min-height: 0; }
+    .hero-visual { order: -1; max-width: 460px; margin: 0 auto; width: 100%; }
+    .hero-visual { margin-right: auto; }
+    .latest-grid { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 680px) {
+    .hero { padding-top: 24px; }
+    .hero-visual { max-width: 360px; }
+    .proj-grid, .latest-grid { grid-template-columns: 1fr; }
+    .stats { gap: 22px; }
+  }
+</style>

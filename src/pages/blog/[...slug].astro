@@ -1,0 +1,204 @@
+---
+import { render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ChainBanner from '../../components/ChainBanner.astro';
+import Toc from '../../components/Toc.astro';
+import Lightbox from '../../components/Lightbox.astro';
+import { getPosts, formatDate, isoDate, readingTime } from '../../lib/utils';
+import { SITE } from '../../lib/site';
+import '../../styles/prose.css';
+
+export async function getStaticPaths() {
+  const posts = await getPosts();
+  return posts.map((post, i) => ({
+    params: { slug: post.id },
+    props: { post, newer: posts[i - 1] ?? null, older: posts[i + 1] ?? null },
+  }));
+}
+
+const { post, newer, older } = Astro.props;
+const { Content, headings } = await render(post);
+const d = post.data;
+const mins = readingTime(post.body);
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'TechArticle',
+  headline: d.title,
+  description: d.description,
+  datePublished: d.date.toISOString(),
+  dateModified: (d.updated ?? d.date).toISOString(),
+  author: { '@type': 'Person', name: SITE.name, url: SITE.url },
+  keywords: d.tags.join(', '),
+  mainEntityOfPage: new URL(`/blog/${post.id}/`, SITE.url).toString(),
+};
+---
+
+<BaseLayout title={d.title} description={d.description} type="article" publishedTime={d.date} tags={d.tags} image={d.cover} jsonLd={jsonLd}>
+  <div class="progress" aria-hidden="true"><span data-progress></span></div>
+
+  <header class="a-head">
+    <div class={`container a-head-grid ${d.art ? 'has-art' : ''}`}>
+      <div class="a-head-text">
+      <nav class="crumbs mono" aria-label="Breadcrumb">
+        <a href="/blog/">~/blog</a><span>/</span><a href={`/blog/?category=${encodeURIComponent(d.category)}`}>{d.category.toLowerCase().replace(/\s+/g, '-')}</a>
+      </nav>
+      <h1>{d.title}</h1>
+      <p class="dek">{d.description}</p>
+      <div class="meta a-meta">
+        <span class="cat">{d.category}</span>
+        <span class="sep">/</span>
+        <time datetime={isoDate(d.date)}>{formatDate(d.date)}</time>
+        {d.updated && (<><span class="sep">/</span><span>updated {formatDate(d.updated)}</span></>)}
+        <span class="sep">/</span>
+        <span>{mins} min read</span>
+      </div>
+      {d.method && <p class="method mono"><span class="m-dot" aria-hidden="true"></span>{d.method}</p>}
+      <ul class="a-tags">
+        {d.tags.map((t) => <li><a class="tag" href={`/blog/?tag=${encodeURIComponent(t)}`}>#{t}</a></li>)}
+      </ul>
+    </div>
+      {d.art && <img class="a-art" src={d.art} alt={d.artAlt ?? ''} width="640" height="420" />}
+    </div>
+  </header>
+
+  <div class="container">
+    <figure class="banner">
+      {d.cover ? <img src={d.cover} alt={d.coverAlt ?? ''} data-zoom /> : d.chain.length > 0 && <ChainBanner chain={d.chain} variant="hero" />}
+      {d.chain.length > 0 && !d.cover && (
+        <ol class="chain-list mono">{d.chain.map((c, i) => <li><span>{String(i).padStart(2, '0')}</span>{c}</li>)}</ol>
+      )}
+      {d.chain.length > 0 && !d.cover && <figcaption class="mono">Infection chain, from the archive delivered to the victim to the plugins pushed by the operator.</figcaption>}
+    </figure>
+
+    {d.facts.length > 0 && (
+      <dl class="facts">
+        {d.facts.map((f) => <div><dt>{f.label}</dt><dd>{f.value}</dd></div>)}
+      </dl>
+    )}
+  </div>
+
+  <div class="container a-grid">
+    <aside class="a-side">
+      <div class="sticky">
+        <Toc headings={headings} />
+        {(d.source || d.attachments.length > 0) && (
+          <div class="side-box">
+            <p class="side-title mono">Artifacts</p>
+            <ul>
+              {d.source && <li><a href={d.source} target="_blank" rel="noopener">Source on GitHub ↗</a></li>}
+              {d.attachments.map((a) => <li><a href={a.href} download>{a.label}</a>{a.note && <span class="mono">{a.note}</span>}</li>)}
+            </ul>
+          </div>
+        )}
+      </div>
+    </aside>
+
+    <article class="prose" data-article>
+      <Content />
+      {(d.source || d.attachments.length > 0) && (
+        <aside class="artifacts-mobile">
+          <p class="side-title mono">Artifacts</p>
+          <ul>
+            {d.source && <li><a href={d.source} target="_blank" rel="noopener">Source on GitHub ↗</a></li>}
+            {d.attachments.map((a) => <li><a href={a.href} download>{a.label}</a></li>)}
+          </ul>
+        </aside>
+      )}
+    </article>
+  </div>
+
+  <nav class="container pager" aria-label="More research">
+    {older ? (
+      <a class="pg prev" href={`/blog/${older.id}/`}><span class="mono">← previous</span><strong>{older.data.title}</strong></a>
+    ) : <span class="pg is-empty mono">// first published report</span>}
+    {newer ? (
+      <a class="pg next" href={`/blog/${newer.id}/`}><span class="mono">next →</span><strong>{newer.data.title}</strong></a>
+    ) : <a class="pg next" href="/blog/"><span class="mono">archive →</span><strong>Browse all research</strong></a>}
+  </nav>
+
+  <Lightbox />
+</BaseLayout>
+
+<script>
+  import '../../scripts/article.ts';
+</script>
+
+<style>
+  .progress { position: fixed; top: var(--header-h); left: 0; right: 0; height: 2px; z-index: 49; pointer-events: none; }
+  .progress span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--green)); transform-origin: 0 50%; transform: scaleX(0); }
+
+  .a-head { padding: 56px 0 36px; }
+  .a-head-grid.has-art { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0.92fr); gap: 40px; align-items: center; }
+  .a-art { width: 100%; height: auto; }
+  @media (max-width: 1000px) {
+    .a-head-grid.has-art { grid-template-columns: 1fr; gap: 20px; }
+    .a-art { max-width: 520px; margin: 0 auto; }
+  }
+  .crumbs { font-size: 12.5px; color: var(--text-3); display: flex; gap: 8px; }
+  .crumbs a { color: var(--text-2); }
+  .a-head h1 { font-size: clamp(30px, 4.6vw, 52px); line-height: 1.08; letter-spacing: -0.035em; margin-top: 20px; max-width: 22ch; }
+  .dek { color: var(--text-2); font-size: 18px; max-width: 70ch; margin: 18px 0 0; }
+  .a-meta { margin-top: 22px; }
+  .a-meta .cat { color: var(--green); }
+  .method { display: inline-flex; align-items: center; gap: 9px; margin: 16px 0 0; font-size: 12.5px; color: var(--accent); border: 1px solid var(--accent-line); background: var(--accent-dim); border-radius: 999px; padding: 6px 12px; }
+  .m-dot { width: 6px; height: 6px; border-radius: 1px; background: var(--accent); }
+  .a-tags { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+
+  .banner { margin: 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: #0b1017; }
+  .banner img { width: 100%; cursor: zoom-in; }
+  .banner figcaption { font-size: 12px; color: var(--text-3); padding: 10px 16px; border-top: 1px solid var(--border-soft); }
+
+  .facts { display: grid; grid-template-columns: repeat(4, 1fr); margin: 20px 0 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .facts div { padding: 14px 18px; border-right: 1px solid var(--border-soft); }
+  .facts div:last-child { border-right: 0; }
+  .facts dt { font: 11px var(--font-mono); text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-3); }
+  .facts dd { margin: 6px 0 0; font-size: 14px; color: var(--text); }
+
+  .a-grid { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 56px; padding-top: 56px; align-items: start; }
+  .a-side { align-self: stretch; }
+  .a-side .sticky { position: sticky; top: calc(var(--header-h) + 28px); display: flex; flex-direction: column; gap: 24px; }
+  .side-box { border-top: 1px solid var(--border-soft); padding-top: 18px; font-size: 13px; }
+  .side-title { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--text-3); margin: 0 0 10px; }
+  .side-box ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .side-box li span { display: block; font-size: 11px; color: var(--text-3); word-break: break-all; }
+
+  .chain-list { display: none; list-style: none; margin: 0; padding: 14px 16px; font-size: 12.5px; color: var(--text); }
+  .chain-list li { padding: 5px 0; border-left: 1px dashed var(--accent-line); padding-left: 14px; position: relative; }
+  .chain-list li::before { content: ''; position: absolute; left: -4px; top: 11px; width: 7px; height: 7px; border-radius: 2px; background: var(--accent); }
+  .chain-list li:last-child::before { background: var(--green); }
+  .chain-list span { color: var(--text-3); margin-right: 10px; }
+  .artifacts-mobile { display: none; }
+  .pager { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 80px; }
+  .pg { border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; display: flex; flex-direction: column; gap: 6px; color: var(--text); transition: border-color 0.2s, background 0.2s; }
+  .pg span { font-size: 12px; color: var(--text-3); }
+  .pg strong { font-family: var(--font-mono); font-weight: 500; font-size: 15px; }
+  a.pg:hover { border-color: var(--accent-line); background: var(--card); text-decoration: none; }
+  .pg.next { text-align: right; }
+  .pg.is-empty { justify-content: center; color: var(--text-3); font-size: 12.5px; border-style: dashed; }
+
+  @media (max-width: 1100px) {
+    .a-grid { grid-template-columns: 1fr; gap: 28px; padding-top: 32px; }
+    .a-side .sticky { position: static; }
+    .side-box { display: none; }
+    .artifacts-mobile { display: block; margin-top: 48px; border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; font-size: 15px; }
+    .artifacts-mobile ul { margin-top: 6px; }
+    .facts { grid-template-columns: 1fr 1fr; }
+    .facts div:nth-child(2) { border-right: 0; }
+    .facts div:nth-child(-n + 2) { border-bottom: 1px solid var(--border-soft); }
+    .a-side { position: sticky; top: calc(var(--header-h) + 8px); z-index: 10; align-self: start; }
+  }
+  @media (max-width: 640px) {
+    .banner :global(svg) { display: none; }
+    .banner .chain-list { display: block; }
+    .facts { grid-template-columns: 1fr; }
+    .facts div { border-right: 0; border-bottom: 1px solid var(--border-soft); }
+    .chain-list { display: none; list-style: none; margin: 0; padding: 14px 16px; font-size: 12.5px; color: var(--text); }
+  .chain-list li { padding: 5px 0; border-left: 1px dashed var(--accent-line); padding-left: 14px; position: relative; }
+  .chain-list li::before { content: ''; position: absolute; left: -4px; top: 11px; width: 7px; height: 7px; border-radius: 2px; background: var(--accent); }
+  .chain-list li:last-child::before { background: var(--green); }
+  .chain-list span { color: var(--text-3); margin-right: 10px; }
+  .artifacts-mobile { display: none; }
+  .pager { grid-template-columns: 1fr; }
+  }
+</style>

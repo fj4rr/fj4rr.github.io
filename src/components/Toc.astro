@@ -1,0 +1,63 @@
+---
+import type { MarkdownHeading } from 'astro';
+interface Props { headings: MarkdownHeading[] }
+const { headings } = Astro.props;
+
+type Node = MarkdownHeading & { children: MarkdownHeading[] };
+const tree: Node[] = [];
+for (const h of headings.filter((h) => h.depth === 2 || h.depth === 3)) {
+  if (h.depth === 2 || !tree.length) tree.push({ ...h, children: [] });
+  else tree[tree.length - 1].children.push(h);
+}
+const clean = (t: string) => t.replace(/#$/, '').trim();
+---
+
+{tree.length > 0 && (
+  <nav class="toc" data-toc aria-label="Table of contents">
+    <button type="button" class="toc-toggle mono" data-toc-toggle aria-expanded="false">
+      <span>On this page</span><span class="chev" aria-hidden="true">▾</span>
+    </button>
+    <p class="toc-title mono">On this page</p>
+    <div class="toc-scroll" data-toc-scroll>
+      <ol>
+        {tree.map((h) => (
+          <li class={h.children.length ? 'has-children' : ''}>
+            <a href={`#${h.slug}`}>{clean(h.text)}</a>
+            {h.children.length > 0 && (
+              <ol>
+                {h.children.map((c) => <li><a href={`#${c.slug}`}>{clean(c.text)}</a></li>)}
+              </ol>
+            )}
+          </li>
+        ))}
+      </ol>
+    </div>
+  </nav>
+)}
+
+<style>
+  .toc { font-size: 13px; }
+  .toc-title { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--text-3); margin: 0 0 12px; }
+  .toc-scroll { max-height: calc(100vh - var(--header-h) - 140px); overflow-y: auto; padding-right: 8px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+  ol { list-style: none; margin: 0; padding: 0; }
+  ol ol { margin: 2px 0 6px 12px; padding-left: 10px; border-left: 1px solid var(--border-soft); display: none; }
+  li.has-children:has(.is-active) > ol { display: block; }
+  a { display: block; padding: 5px 0 5px 12px; color: var(--text-2); line-height: 1.4; border-left: 2px solid transparent; margin-left: -2px; transition: color 0.2s, border-color 0.2s; }
+  ol ol a { font-size: 12.5px; padding-left: 8px; }
+  a:hover { color: var(--text); text-decoration: none; }
+  a.is-active { color: var(--accent); }
+  .toc > .toc-scroll > ol > li > a.is-active { border-left-color: var(--accent); }
+  ol ol a.is-active { color: var(--green); }
+  .toc-toggle { display: none; }
+
+  @media (max-width: 1100px) {
+    .toc { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-2); }
+    .toc-title { display: none; }
+    .toc-toggle { display: flex; justify-content: space-between; width: 100%; background: none; border: 0; color: var(--text); font-size: 13px; padding: 12px 16px; cursor: pointer; }
+    .chev { transition: transform 0.25s; }
+    .toc-toggle[aria-expanded='true'] .chev { transform: rotate(180deg); }
+    .toc-scroll { display: none; max-height: 60vh; padding: 4px 16px 14px; border-top: 1px solid var(--border-soft); }
+    .toc.is-open .toc-scroll { display: block; }
+    ol ol { display: block; }
+  }
+</style>

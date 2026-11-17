@@ -1,0 +1,423 @@
+---
+// Hero visual: one mechanical stag beetle on the analysis bench, built from armour plates,
+// panel seams, circuit traces and jointed legs. It runs through a fixed pipeline:
+// scanning → reversing (plates open) → detecting payload → analyzing → reconstructing.
+// Plain <canvas> 2D with a small hand-written 3D projection; no WebGL or libraries.
+const STEPS = ['scanning', 'reversing', 'detecting payload', 'analyzing', 'reconstructing'];
+---
+
+<div class="spec-wrap" aria-hidden="true">
+  <div class="hud"><span class="status-dot"></span>analyzing malware sample<span class="bar" aria-hidden="true"><i data-bar></i></span><b data-pct>0%</b><span class="hud-phase"> ▸ <b data-phase>{STEPS[0]}</b></span></div>
+  <div class="spec-stage"><canvas class="spec" data-specimen></canvas></div>
+  <ol class="steps" data-steps>
+    {STEPS.map((s, i) => <li class={i === 0 ? 'is-on' : ''}><span>{String(i + 1).padStart(2, '0')}</span>{s}</li>)}
+  </ol>
+</div>
+
+<style>
+  .spec-wrap { width: 100%; max-width: 640px; margin-left: auto; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+  .spec-stage { position: relative; width: 100%; aspect-ratio: 1 / 0.86; }
+  .spec { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .hud {
+    font-family: var(--font-mono); font-size: 11px; color: var(--text-3);
+    display: flex; align-items: center; gap: 8px; letter-spacing: 0.04em; white-space: nowrap;
+    padding: 6px 9px; border: 1px solid var(--border-soft); border-radius: 6px; background: rgba(8, 11, 16, 0.7);
+  }
+  .hud b { font-weight: 500; color: var(--accent); }
+  .hud [data-pct] { min-width: 3.4ch; text-align: right; }
+  .bar { width: 120px; height: 6px; border: 1px solid var(--border); border-radius: 2px; overflow: hidden; background: rgba(40, 169, 255, 0.06); }
+  .bar i { display: block; height: 100%; width: 100%; transform-origin: 0 50%; transform: scaleX(0); background: var(--accent); }
+  @media (max-width: 480px) { .bar { width: 64px; } }
+  .hud-phase { display: none; }
+  .hud-phase b { color: var(--green); }
+  .steps {
+    width: 100%; margin: 0; padding: 10px 0 0; list-style: none;
+    display: flex; justify-content: space-between; gap: 6px;
+    font: 10.5px var(--font-mono); letter-spacing: 0.02em; color: var(--text-3);
+    border-top: 1px solid var(--border-soft);
+  }
+  .steps li { display: flex; gap: 6px; align-items: center; white-space: nowrap; transition: color 0.3s; }
+  .steps li span { color: #3a4b60; transition: color 0.3s; }
+  .steps li.is-done { color: var(--text-2); }
+  .steps li.is-on { color: var(--green); }
+  .steps li.is-on span { color: var(--green); }
+  @media (max-width: 1240px) {
+    .steps { display: none; }
+    .hud-phase { display: inline; }
+    .spec-wrap { align-items: center; }
+  }
+  @media (max-width: 480px) { .hud { font-size: 10px; gap: 6px; } }
+</style>
+
+<script>
+  type In = (x: number, z: number) => boolean;
+  const DUR = 16000;
+  const P = { scan: 0.2, rev: 0.4, det: 0.56, ana: 0.84 };
+  const BLUE = '40,169,255', ICE = '155,213,255', GREEN = '53,217,138';
+  const ASM = ['push  ebp', 'mov   ebp, esp', 'sub   esp, 0x48', 'xor   eax, eax', 'call  sub_4E3F', 'cmp   eax, 0x1', 'jnz   loc_401A2C', 'mov   ecx, [ebp+8]', 'lea   edx, [eax+4]', 'ret'];
+  const clamp = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
+  const ease = (t: number) => { t = clamp(t); return t * t * (3 - 2 * t); };
+  const rng = (seed: number) => () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+
+  // ---------------------------------------------------------------- anatomy (top view: x = left/right, z = tail→head)
+  const ell = (cx: number, cz: number, rx: number, rz: number): In => (x, z) => ((x - cx) / rx) ** 2 + ((z - cz) / rz) ** 2 <= 1;
+  /** chain of tapered capsules: [x, z, radius][] */
+  const horn = (pts: number[][]): In => (x, z) => {
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [x0, z0, r0] = pts[i], [x1, z1, r1] = pts[i + 1];
+      const dx = x1 - x0, dz = z1 - z0;
+      const t = clamp(((x - x0) * dx + (z - z0) * dz) / (dx * dx + dz * dz));
+      const r = r0 + (r1 - r0) * t;
+      if ((x - x0 - dx * t) ** 2 + (z - z0 - dz * t) ** 2 <= r * r) return true;
+    }
+    return false;
+  };
+  const mir = (f: In): In => (x, z) => f(-x, z);
+
+  const ELY_R = 0, ELY_L = 1, PRO = 2, HEAD = 3, MAN_R = 4, MAN_L = 5, BELLY = 6, LEG = 7;
+  const elyR: In = (x, z) => x >= 0.014 && z <= 0.07 && ell(0, -0.4, 0.47, 0.6)(x, z);
+  const manR: In = (x, z) =>
+    horn([[0.19, 0.6, 0.08], [0.4, 0.82, 0.07], [0.48, 1.04, 0.058], [0.42, 1.24, 0.046], [0.27, 1.4, 0.026]])(x, z) ||   // main beam
+    horn([[0.46, 0.98, 0.045], [0.27, 1.0, 0.018]])(x, z) ||                                                              // inner tooth
+    horn([[0.43, 1.2, 0.034], [0.3, 1.2, 0.014]])(x, z) ||                                                                // second tooth
+    horn([[0.42, 1.24, 0.04], [0.45, 1.42, 0.016]])(x, z);                                                                // forked tip
+  const PARTS: { id: number; inside: In; H: number; R: number; step: number }[] = [
+    { id: ELY_R, inside: elyR, H: 0.27, R: 0.3, step: 0.019 },
+    { id: ELY_L, inside: mir(elyR), H: 0.27, R: 0.3, step: 0.019 },
+    { id: PRO, inside: (x, z) => z >= 0.09 && z <= 0.41 && ell(0, 0.2, 0.5, 0.27)(x, z), H: 0.21, R: 0.2, step: 0.019 },
+    { id: HEAD, inside: (x, z) => (z >= 0.43 && ell(0, 0.47, 0.36, 0.2)(x, z)) || ell(0.35, 0.5, 0.05, 0.06)(x, z) || ell(-0.35, 0.5, 0.05, 0.06)(x, z), H: 0.13, R: 0.15, step: 0.019 },
+    { id: MAN_R, inside: manR, H: 0.085, R: 0.06, step: 0.017 },
+    { id: MAN_L, inside: mir(manR), H: 0.085, R: 0.06, step: 0.017 },
+    { id: BELLY, inside: ell(0, -0.3, 0.42, 0.66), H: 0, R: 1, step: 0.03 },
+  ];
+  const CORE: [number, number, number] = [0, 0.02, -0.38];
+
+  /** distance to the outline, capped at `max` */
+  const edgeDist = (f: In, x: number, z: number, max: number) => {
+    let d = max;
+    for (let k = 0; k < 8; k++) {
+      const dx = Math.cos((k * Math.PI) / 4), dz = Math.sin((k * Math.PI) / 4);
+      for (let s = 0.012; s < d; s += 0.012) if (!f(x + dx * s, z + dz * s)) { d = s; break; }
+    }
+    return d;
+  };
+  /** domed armour: circular profile rising from the rim */
+  const height = (p: (typeof PARTS)[number], x: number, z: number) => {
+    if (!p.H) return -0.07;
+    const q = 1 - edgeDist(p.inside, x, z, p.R) / p.R;
+    return p.H * Math.sqrt(Math.max(0, 1 - q * q));
+  };
+
+  function build() {
+    const rnd = rng(1794767);
+    const px: number[] = [], py: number[] = [], pz: number[] = [], pid: number[] = [], tone: number[] = [], kind: number[] = []; // kind: 0 plate, 1 rim, 2 via, 3 core
+    const lines: { id: number; pts: number[]; a: number; ice: boolean }[] = [];
+    const PX = 0.115, PZ = 0.092; // armour panel size
+    for (const p of PARTS) {
+      const armour = p.H > 0;
+      // lattice dots; dots on a panel border are left out, which draws the dark seams
+      for (let z = -1.1; z <= 1.5; z += p.step) for (let x = -0.6; x <= 0.6; x += p.step) {
+        if (!p.inside(x, z)) continue;
+        const rim = edgeDist(p.inside, x, z, 0.05) <= p.step * 1.2;
+        const fx = (((x + 2) / PX) % 1), fz = (((z + 2) / PZ) % 1);
+        if (armour && !rim && p.id < MAN_R && (fx < 0.16 || fz < 0.18)) continue;
+        const h = Math.sin(Math.floor((x + 2) / PX) * 12.9898 + Math.floor((z + 2) / PZ) * 78.233 + p.id) * 43758.5453;
+        px.push(x); py.push(height(p, x, z)); pz.push(z); pid.push(p.id);
+        tone.push(armour ? 0.5 + 0.5 * (h - Math.floor(h)) : 0.4);
+        kind.push(!armour && Math.hypot(x - CORE[0], z - CORE[2]) < 0.17 ? 3 : rim ? 1 : 0);
+      }
+      if (!armour || p.id >= MAN_R) continue;
+      // panel seams as lines that follow the dome
+      const run = (along: 'x' | 'z', c: number) => {
+        let cur: number[] = [];
+        for (let s = -1.1; s <= 1.5; s += 0.02) {
+          const x = along === 'x' ? s : c, z = along === 'x' ? c : s;
+          if (p.inside(x, z)) cur.push(x, height(p, x, z) + 0.004, z);
+          else if (cur.length) { if (cur.length > 3) lines.push({ id: p.id, pts: cur, a: along === 'x' ? 0.5 : 0.3, ice: along === 'x' }); cur = []; }
+        }
+      };
+      for (let z = Math.ceil((-1.1 + 2) / PZ) * PZ - 2 + PZ * 0.09; z < 0.6; z += PZ) run('x', z);
+      for (let x = Math.ceil((-0.6 + 2) / PX) * PX - 2 + PX * 0.08; x < 0.6; x += PX) run('z', x);
+      // circuit traces with a via at each end
+      for (let n = 0; n < (p.id <= ELY_L ? 34 : 14); n++) {
+        let x = rnd() * 1.2 - 0.6, z = rnd() * 1.6 - 1.05;
+        if (!p.inside(x, z) || edgeDist(p.inside, x, z, 0.06) < 0.05) continue;
+        const pts: number[] = [];
+        const legs = [[rnd() < 0.5 ? 1 : -1, 0, 0.04 + rnd() * 0.12], [0, rnd() < 0.5 ? 1 : -1, 0.04 + rnd() * 0.14], [rnd() < 0.5 ? 1 : -1, 0, 0.03 + rnd() * 0.08]];
+        let ok = true;
+        pts.push(x, height(p, x, z) + 0.008, z);
+        for (const [dx, dz, L] of legs) {
+          for (let s = 0.02; s <= L && ok; s += 0.02) {
+            const nx = x + dx * 0.02, nz = z + dz * 0.02;
+            if (!p.inside(nx, nz) || edgeDist(p.inside, nx, nz, 0.05) < 0.04) { ok = false; break; }
+            x = nx; z = nz; pts.push(x, height(p, x, z) + 0.008, z);
+          }
+        }
+        if (pts.length < 9) continue;
+        lines.push({ id: p.id, pts, a: 0.75, ice: false });
+        for (const e of [0, pts.length - 3]) { px.push(pts[e]); py.push(pts[e + 1]); pz.push(pts[e + 2]); pid.push(p.id); tone.push(1); kind.push(2); }
+      }
+    }
+    // legs and antennae: 3D polylines (x, y, z)
+    const limbs: number[][][] = [];
+    for (const s of [1, -1]) {
+      limbs.push([[s * 0.4, 0, 0.24], [s * 0.66, 0.12, 0.46], [s * 0.82, -0.3, 0.7], [s * 0.92, -0.33, 0.8]]);
+      limbs.push([[s * 0.42, 0, -0.12], [s * 0.72, 0.12, -0.16], [s * 0.9, -0.3, -0.34], [s * 0.98, -0.33, -0.48]]);
+      limbs.push([[s * 0.38, 0, -0.5], [s * 0.64, 0.12, -0.72], [s * 0.78, -0.3, -1.0], [s * 0.82, -0.33, -1.14]]);
+    }
+    const feelers: number[][][] = [1, -1].map((s) => [[s * 0.27, 0.06, 0.6], [s * 0.52, 0.12, 0.8], [s * 0.6, 0.1, 0.97]]);
+    const n = px.length;
+    const J = new Float32Array(n * 3);
+    for (let i = 0; i < J.length; i++) J[i] = rnd() * 2 - 1;
+    return { n, px, py, pz, pid, tone, kind, lines, limbs, feelers, J };
+  }
+
+  function init(canvas: HTMLCanvasElement) {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const wrap = canvas.closest<HTMLElement>('.spec-wrap')!;
+    const phaseEl = wrap.querySelector<HTMLElement>('[data-phase]')!;
+    const barEl = wrap.querySelector<HTMLElement>('[data-bar]')!;
+    const pctEl = wrap.querySelector<HTMLElement>('[data-pct]')!;
+    let lastPct = -1;
+    const stepEls = [...wrap.querySelectorAll<HTMLElement>('[data-steps] li')];
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const offset = Number(new URLSearchParams(location.search).get('t') || 0); // ?t=ms jumps into the loop (for testing)
+    const B = build();
+    const HEX = Array.from({ length: 64 }, (_, i) => ((i * 73 + 41) % 256).toString(16).toUpperCase().padStart(2, '0'));
+
+    let W = 0, H = 0, S = 0, cx = 0, cy = 0;
+    const resize = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const r = canvas.getBoundingClientRect();
+      W = r.width; H = r.height;
+      canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      S = Math.min(W, H) * 0.43; cx = W / 2; cy = H * 0.52;
+    };
+
+    // how each plate moves when the specimen is opened up (o: 0 closed → 1 open)
+    const T = [0, 0, 0];
+    const move = (id: number, x: number, y: number, z: number, o: number) => {
+      if (o > 0) {
+        if (id === ELY_R || id === ELY_L) {
+          const s = id === ELY_R ? 1 : -1;
+          const dx = x - s * 0.03, dz = z - 0.08;
+          const a = s * 0.5 * o, b = s * 0.32 * o;
+          const x1 = dx * Math.cos(a) - dz * Math.sin(a), z1 = dx * Math.sin(a) + dz * Math.cos(a);
+          x = x1 * Math.cos(b) - y * Math.sin(b) + s * (0.03 + 0.06 * o);
+          y = x1 * Math.sin(b) + y * Math.cos(b) + 0.06 * o;
+          z = z1 + 0.08;
+        } else if (id === PRO) { y += 0.2 * o; z += 0.05 * o; }
+        else if (id === HEAD) { z += 0.2 * o; y += 0.06 * o; }
+        else if (id === MAN_R || id === MAN_L) {
+          const s = id === MAN_R ? 1 : -1;
+          const dx = x - s * 0.19, dz = z - 0.6, a = s * 0.3 * o;
+          x = dx * Math.cos(a) + dz * Math.sin(a) + s * 0.19;
+          z = -dx * Math.sin(a) + dz * Math.cos(a) + 0.6 + 0.2 * o;
+          y += 0.06 * o;
+        }
+      }
+      T[0] = x; T[1] = y; T[2] = z;
+    };
+
+    let lastStep = -1;
+    const draw = (now: number) => {
+      const t = now + offset;
+      const u = (t % DUR) / DUR;
+      const step = u < P.scan ? 0 : u < P.rev ? 1 : u < P.det ? 2 : u < P.ana ? 3 : 4;
+      const pct = Math.min(100, Math.floor(u * 101));
+      if (pct !== lastPct) { lastPct = pct; barEl.style.transform = `scaleX(${u.toFixed(3)})`; pctEl.textContent = `${pct}%`; }
+      if (step !== lastStep) {
+        lastStep = step; phaseEl.textContent = stepEls[step].lastChild?.textContent ?? '';
+        stepEls.forEach((el, i) => { el.classList.toggle('is-on', i === step); el.classList.toggle('is-done', i < step); });
+      }
+      const open = step === 0 ? 0 : step === 1 ? ease((u - P.scan) / 0.13) : step < 4 ? 1 : 1 - ease((u - P.ana) / (1 - P.ana) / 0.8);
+      const burst = step === 4 ? Math.sin(Math.PI * clamp((u - P.ana) / (1 - P.ana))) * 0.07 : 0;
+      const us = u / P.scan;
+      const scanZ = step === 0 ? 1.5 - 2.6 * (us < 0.5 ? us * 2 : 2 - us * 2) : NaN;
+      const rev = step === 1 ? Math.sin(Math.PI * clamp((u - P.scan) / (P.rev - P.scan))) : 0;
+      const ud = clamp((u - P.rev) / (P.det - P.rev));
+      const coreOn = step < 2 ? 0 : step === 2 ? ud : step === 3 ? 1 : open;
+      const ua = clamp((u - P.det) / (P.ana - P.det));
+
+      const yaw = t * 0.00017 + 0.7, pitch = 0.92;
+      const cyw = Math.cos(yaw), syw = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+      const cam = 5, K = 0.8, ZC = 0.2;
+      const proj = (x: number, y: number, z: number): [number, number, number] => {
+        x *= K; y *= K; z = (z - ZC) * K;
+        const x1 = x * cyw + z * syw, z1 = -x * syw + z * cyw;
+        const y2 = y * cp - z1 * sp, z2 = y * sp + z1 * cp;
+        const f = cam / (cam - z2);
+        return [cx + x1 * S * f, cy - y2 * S * f, z2];
+      };
+      const at = (id: number, x: number, y: number, z: number) => { move(id, x, y, z, open); return proj(T[0], T[1], T[2]); };
+
+      ctx.clearRect(0, 0, W, H);
+
+      // bench: glow, ground rings with tick marks
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, S * 1.5);
+      g.addColorStop(0, 'rgba(40,169,255,0.10)'); g.addColorStop(1, 'rgba(40,169,255,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      ctx.lineWidth = 1;
+      for (const [r, a, dash] of [[1.36, 0.22, [2, 6]], [1.05, 0.12, []]] as [number, number, number[]][]) {
+        ctx.beginPath();
+        for (let k = 0; k <= 72; k++) { const p = proj(Math.cos((k / 72) * 6.2832) * r, -0.34, Math.sin((k / 72) * 6.2832) * r + ZC); k ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }
+        ctx.strokeStyle = `rgba(${BLUE},${a})`; ctx.setLineDash(dash); ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      ctx.strokeStyle = `rgba(${BLUE},0.3)`;
+      for (let k = 0; k < 36; k++) {
+        const c = Math.cos((k / 36) * 6.2832), s = Math.sin((k / 36) * 6.2832), L = k % 3 ? 1.39 : 1.44;
+        const a = proj(c * 1.36, -0.34, s * 1.36 + ZC), b = proj(c * L, -0.34, s * L + ZC);
+        ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+      }
+
+      // scan plane
+      if (step === 0) {
+        const c = [[-0.75, -0.3], [-0.75, 0.42], [0.75, 0.42], [0.75, -0.3]].map(([x, y]) => proj(x, y, scanZ));
+        ctx.beginPath(); c.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.closePath();
+        ctx.fillStyle = `rgba(${GREEN},0.06)`; ctx.fill();
+        ctx.strokeStyle = `rgba(${GREEN},0.5)`; ctx.stroke();
+      }
+
+      // legs and antennae
+      const limb = (pts: number[][], w: number) => {
+        const q = pts.map((p) => proj(p[0], p[1], p[2]));
+        ctx.lineCap = 'round';
+        for (let i = 0; i < q.length - 1; i++) {
+          const k = w * (i === 0 ? 2.0 : i === 1 ? 1.5 : 1.0); // femur, tibia, tarsus
+          ctx.beginPath(); ctx.moveTo(q[i][0], q[i][1]); ctx.lineTo(q[i + 1][0], q[i + 1][1]);
+          ctx.strokeStyle = 'rgba(16,42,66,0.95)'; ctx.lineWidth = k * 2.4; ctx.stroke();
+          ctx.strokeStyle = `rgba(${BLUE},0.75)`; ctx.lineWidth = k * 2.4; ctx.setLineDash([1.5, 3]); ctx.stroke(); ctx.setLineDash([]);
+          ctx.strokeStyle = `rgba(${ICE},0.9)`; ctx.lineWidth = Math.max(1, k * 0.5); ctx.stroke();
+        }
+        ctx.lineCap = 'butt';
+        ctx.fillStyle = `rgb(${ICE})`;
+        q.forEach((p) => ctx.fillRect(p[0] - w * 1.6, p[1] - w * 1.6, w * 3.2, w * 3.2));
+      };
+      const lw = Math.max(1, S / 170);
+      B.limbs.forEach((l) => {
+        limb(l, lw);
+        // tibia spines
+        ctx.strokeStyle = `rgba(${ICE},0.55)`; ctx.lineWidth = 1;
+        for (let k = 1; k <= 3; k++) {
+          const f = k / 4, x = l[1][0] + (l[2][0] - l[1][0]) * f, y = l[1][1] + (l[2][1] - l[1][1]) * f, z = l[1][2] + (l[2][2] - l[1][2]) * f;
+          const a = proj(x, y, z), b = proj(x + Math.sign(x) * 0.05, y + 0.02, z + 0.04);
+          ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+        }
+      });
+      B.feelers.forEach((l) => limb(l.map((p) => { move(HEAD, p[0], p[1], p[2], open); return [T[0], T[1], T[2]]; }), lw * 0.7));
+
+      // panel seams and circuit traces
+      ctx.lineWidth = 1;
+      for (const l of B.lines) {
+        ctx.beginPath();
+        let lit = false;
+        for (let i = 0; i < l.pts.length; i += 3) {
+          if (Math.abs(l.pts[i + 2] - scanZ) < 0.05) lit = true;
+          const p = at(l.id, l.pts[i], l.pts[i + 1], l.pts[i + 2]);
+          i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]);
+        }
+        ctx.strokeStyle = `rgba(${lit ? GREEN : l.ice ? ICE : BLUE},${lit ? 0.9 : l.a})`;
+        ctx.stroke();
+      }
+
+      // armour plates
+      const base = Math.max(1.3, S / 92);
+      ctx.font = `${Math.max(8, Math.round(S / 22))}px "JetBrains Mono", ui-monospace, monospace`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const { px, py, pz, pid, tone, kind, J } = B;
+      for (let i = 0; i < B.n; i++) {
+        move(pid[i], px[i], py[i], pz[i], open);
+        const p = proj(T[0] + J[i * 3] * burst, T[1] + J[i * 3 + 1] * burst, T[2] + J[i * 3 + 2] * burst);
+        const depth = clamp((p[2] + 0.9) / 1.8);
+        const k = kind[i];
+        const lit = Math.abs(pz[i] - scanZ) < 0.045;
+        const core = k === 3 && coreOn > 0;
+        const col = lit || core ? GREEN : k ? ICE : BLUE;
+        const a = lit ? 1 : core ? (0.5 + 0.5 * depth) * coreOn + 0.3 * (1 - coreOn) : k === 2 ? 1 : (0.45 + 0.55 * depth) * (k === 1 ? 1 : tone[i]);
+        ctx.fillStyle = `rgba(${col},${a.toFixed(2)})`;
+        if (rev > 0.3 && i % 37 === 0) { ctx.globalAlpha = rev; ctx.fillText(HEX[(i + Math.floor(t / 300)) % 64], p[0], p[1]); ctx.globalAlpha = 1; continue; }
+        const sz = base * (k === 2 ? 1.7 : k === 1 ? 1.2 : 1) * (0.8 + 0.4 * depth);
+        ctx.fillRect(p[0] - sz / 2, p[1] - sz / 2, sz, sz);
+      }
+
+      // payload core: a spinning chip inside the abdomen
+      if (coreOn > 0.02) {
+        const r = 0.1, a = t * 0.0012, lift = 0.1 * coreOn;
+        const v = [-1, 1].flatMap((y) => [0, 1, 2, 3].map((k) => proj(CORE[0] + Math.cos(a + k * 1.5708) * r * 1.4, CORE[1] + lift + y * r * 0.6, CORE[2] + Math.sin(a + k * 1.5708) * r * 1.4)));
+        ctx.strokeStyle = `rgba(${GREEN},${(0.95 * coreOn).toFixed(2)})`; ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        for (let k = 0; k < 4; k++) {
+          const n = (k + 1) % 4;
+          ctx.moveTo(v[k][0], v[k][1]); ctx.lineTo(v[n][0], v[n][1]);
+          ctx.moveTo(v[k + 4][0], v[k + 4][1]); ctx.lineTo(v[n + 4][0], v[n + 4][1]);
+          ctx.moveTo(v[k][0], v[k][1]); ctx.lineTo(v[k + 4][0], v[k + 4][1]);
+        }
+        ctx.stroke(); ctx.lineWidth = 1;
+      }
+
+      // overlays
+      const small = W < 420;
+      ctx.font = `500 ${small ? 10 : 11}px "JetBrains Mono", ui-monospace, monospace`;
+      const callout = (p: [number, number, number], text: string, lx: number, ly: number, col: string, on: number) => {
+        if (on <= 0.02) return;
+        const left = lx < cx;
+        const tw = ctx.measureText(text).width;
+        lx = left ? Math.max(lx, tw + 18) : Math.min(lx, W - tw - 18);
+        ctx.globalAlpha = clamp(on * 2);
+        ctx.strokeStyle = `rgba(${col},0.5)`;
+        ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(lx, ly); ctx.lineTo(lx + (left ? -8 : 8), ly); ctx.stroke();
+        ctx.fillStyle = `rgb(${col})`; ctx.fillRect(p[0] - 2, p[1] - 2, 4, 4);
+        ctx.fillStyle = col === GREEN ? '#8EF0C0' : '#A9B8CC';
+        ctx.textAlign = left ? 'right' : 'left';
+        ctx.fillText(text.slice(0, Math.ceil(text.length * clamp(on * 1.6))), lx + (left ? -12 : 12), ly);
+        ctx.globalAlpha = 1;
+      };
+      if (rev > 0.1) {
+        ctx.globalAlpha = rev; ctx.textAlign = 'left'; ctx.fillStyle = `rgba(${ICE},0.75)`;
+        const o = Math.floor(t / 260);
+        for (let r = 0; r < (small ? 3 : 5); r++) ctx.fillText(`${(0x401000 + ((o + r) % 64) * 3).toString(16).toUpperCase()}  ${ASM[(o + r) % ASM.length]}`, 4, H - 16 - (4 - r) * 14);
+        ctx.globalAlpha = 1;
+      }
+      const pc = proj(CORE[0], CORE[1] + 0.1, CORE[2]);
+      if (step === 2 || step === 3) {
+        const r = S * (0.15 + (1 - ud) * 0.45), c = r * 0.35;
+        ctx.strokeStyle = `rgba(${GREEN},${(step === 3 ? 0.85 - ua * 0.45 : 0.85).toFixed(2)})`; ctx.lineWidth = 1.5;
+        for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+          ctx.beginPath(); ctx.moveTo(pc[0] + sx * r, pc[1] + sy * (r - c)); ctx.lineTo(pc[0] + sx * r, pc[1] + sy * r); ctx.lineTo(pc[0] + sx * (r - c), pc[1] + sy * r); ctx.stroke();
+        }
+        ctx.lineWidth = 1;
+        callout(pc, step === 2 && ud < 0.55 ? 'locating payload…' : 'payload · C2 config', W * 0.68, H * 0.94, GREEN, step === 2 ? ud * 1.5 : 1);
+      }
+      if (step === 3) {
+        // the leftmost anchors take the left labels so leader lines never cross
+        const notes = [
+          { p: at(MAN_R, 0.48, 0.09, 1.04), text: 'mandibles · injection hooks' },
+          { p: at(PRO, 0, 0.21, 0.22), text: 'pronotum · loader stub' },
+          { p: at(ELY_L, -0.26, 0.25, -0.5), text: 'elytra · packed shell' },
+        ].sort((a, b) => a.p[0] - b.p[0]);
+        const leftPair = [notes[0], notes[1]].sort((a, b) => a.p[1] - b.p[1]);
+        const slots: [typeof notes[number], number, number][] = [
+          [leftPair[0], W * 0.34, H * 0.05], [leftPair[1], W * 0.3, H * 0.94], [notes[2], W * 0.68, H * 0.09],
+        ];
+        slots.forEach(([n, x, y], j) => callout(n.p, n.text, x, y, BLUE, (ua - 0.1 - j * 0.2) / 0.3));
+      }
+    };
+
+    resize();
+    const still = DUR * 0.72 - offset; // reduced motion: one frame in the "analyzing" stage
+    let running = false, raf = 0;
+    const loop = (now: number) => { draw(now); raf = requestAnimationFrame(loop); };
+    const start = () => { if (running || reduce) return; running = true; raf = requestAnimationFrame(loop); };
+    const stop = () => { running = false; cancelAnimationFrame(raf); };
+    draw(reduce ? still : performance.now());
+    new ResizeObserver(() => { resize(); draw(reduce ? still : performance.now()); }).observe(canvas);
+    new IntersectionObserver(([e]) => (e.isIntersecting ? start() : stop())).observe(canvas);
+    document.addEventListener('visibilitychange', () => (document.hidden ? stop() : start()));
+    if (reduce) document.fonts?.ready.then(() => draw(still));
+  }
+
+  document.querySelectorAll<HTMLCanvasElement>('[data-specimen]').forEach(init);
+</script>

@@ -1,0 +1,27 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Not found" description="Page not found.">
+  <section class="container nf">
+    <pre class="mono" aria-hidden="true"><span class="g">$</span> curl -I {'{'}this-page{'}'}
+HTTP/1.1 <span class="b">404</span> Not Found
+x-hint: the sample you're looking for isn't in this archive</pre>
+    <h1>Page not found<span class="cursor" aria-hidden="true"></span></h1>
+    <p>The page may have moved. Try the research archive instead.</p>
+    <div class="cta">
+      <a class="btn btn-primary" href="/blog/">Browse research <span class="arr">→</span></a>
+      <a class="btn" href="/">Home</a>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .nf { padding-top: 96px; max-width: 760px; }
+  pre { color: var(--text-2); font-size: 14px; border: 1px solid var(--border); background: var(--bg-2); border-radius: var(--radius); padding: 18px 20px; overflow-x: auto; }
+  .g { color: var(--green); }
+  .b { color: var(--accent); }
+  h1 { font-size: 40px; margin-top: 36px; }
+  p { color: var(--text-2); }
+  .cta { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+</style>

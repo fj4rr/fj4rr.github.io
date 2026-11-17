@@ -1,0 +1,94 @@
+---
+// Draws an article's infection chain (frontmatter `chain`) as a technical banner.
+// Used as the featured visual on write-ups and as the card thumbnail when no cover image exists.
+interface Props {
+  chain: string[];
+  title?: string;
+  variant?: 'hero' | 'card';
+  label?: string;
+}
+const { chain, variant = 'card', label = 'infection_chain' } = Astro.props;
+
+const perRow = variant === 'hero' ? 5 : 4;
+const shown = variant === 'card' ? chain.slice(0, 8) : chain;
+const rows: string[][] = [];
+for (let i = 0; i < shown.length; i += perRow) rows.push(shown.slice(i, i + perRow));
+
+const W = 1200;
+const padX = 56;
+const top = variant === 'hero' ? 88 : 78;
+const rowGap = variant === 'hero' ? 128 : 120;
+const boxH = 54;
+const gap = 34;
+const boxW = (W - padX * 2 - gap * (perRow - 1)) / perRow;
+const H = top + rows.length * rowGap + (variant === 'hero' ? 10 : 0);
+
+type Box = { x: number; y: number; text: string; i: number };
+const boxes: Box[] = [];
+rows.forEach((row, r) => {
+  row.forEach((text, c) => {
+    // snake layout: even rows left→right, odd rows right→left
+    const col = r % 2 === 0 ? c : perRow - 1 - c;
+    boxes.push({ x: padX + col * (boxW + gap), y: top + r * rowGap, text, i: r * perRow + c });
+  });
+});
+const trunc = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
+const maxChars = Math.floor(boxW / 12.5);
+---
+
+<svg class={`chain chain-${variant}`} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Infection chain: ${chain.join(' → ')}`} preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <pattern id={`g-${variant}`} width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M24 0H0V24" fill="none" stroke="#263445" stroke-opacity="0.35" stroke-width="1" />
+    </pattern>
+    <marker id={`ah-${variant}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#28A9FF" />
+    </marker>
+  </defs>
+  <rect width={W} height={H} fill="#0B1017" />
+  <rect width={W} height={H} fill={`url(#g-${variant})`} />
+  <text x={padX} y="40" class="lbl">// {label}</text>
+  <text x={W - padX} y="40" text-anchor="end" class="lbl dim">{chain.length} stages</text>
+
+  {
+    boxes.slice(0, -1).map((b, k) => {
+      const n = boxes[k + 1];
+      const sameRow = Math.abs(n.y - b.y) < 1;
+      if (sameRow) {
+        const dir = n.x > b.x ? 1 : -1;
+        const x1 = dir > 0 ? b.x + boxW : b.x;
+        const x2 = dir > 0 ? n.x - 4 : n.x + boxW + 4;
+        return <line class="edge" x1={x1} y1={b.y + boxH / 2} x2={x2} y2={n.y + boxH / 2} marker-end={`url(#ah-${variant})`} />;
+      }
+      const x = b.x + boxW / 2;
+      return <path class="edge" d={`M${x} ${b.y + boxH} V${n.y - 4}`} marker-end={`url(#ah-${variant})`} />;
+    })
+  }
+
+  {
+    boxes.map((b) => (
+      <g class={`node ${b.i === shown.length - 1 ? 'last' : ''} ${b.i === 0 ? 'first' : ''}`}>
+        <rect x={b.x} y={b.y} width={boxW} height={boxH} rx="6" />
+        <text x={b.x + 14} y={b.y + 22} class="idx">{String(b.i).padStart(2, '0')}</text>
+        <text x={b.x + 14} y={b.y + 42} class="name">{trunc(b.text, maxChars)}</text>
+      </g>
+    ))
+  }
+</svg>
+
+<style>
+  .chain { width: 100%; height: auto; display: block; }
+  .lbl { font: 500 18px var(--font-mono); fill: #28a9ff; }
+  .lbl.dim { fill: #64748b; }
+  .edge { stroke: #28a9ff; stroke-opacity: 0.55; stroke-width: 1.5; fill: none; stroke-dasharray: 5 5; }
+  .node rect { fill: #111821; stroke: #263445; stroke-width: 1.5; }
+  .node.first rect { stroke: #28a9ff; stroke-opacity: 0.7; }
+  .node.last rect { stroke: #35d98a; stroke-opacity: 0.8; }
+  .idx { font: 500 13px var(--font-mono); fill: #64748b; }
+  .name { font: 500 17px var(--font-mono); fill: #f1f5f9; }
+  .chain-card .name { font-size: 19px; }
+  @media (prefers-reduced-motion: no-preference) {
+    .chain-hero .edge { animation: flow 1.6s linear infinite; }
+  }
+  @keyframes flow { to { stroke-dashoffset: -20; } }
+</style>

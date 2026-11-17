@@ -1,0 +1,111 @@
+---
+import { render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Lightbox from '../../components/Lightbox.astro';
+import Slideshow from '../../components/Slideshow.astro';
+import { getProjects } from '../../lib/utils';
+import '../../styles/prose.css';
+
+export async function getStaticPaths() {
+  const items = await getProjects();
+  return items.map((project) => ({ params: { slug: project.id }, props: { project } }));
+}
+const { project } = Astro.props;
+const { Content } = await render(project);
+const d = project.data;
+---
+
+<BaseLayout title={d.title} description={d.description} image={d.cover}>
+  <header class="p-head">
+    <div class="container">
+      <nav class="crumbs mono" aria-label="Breadcrumb"><a href="/projects/">~/projects</a><span>/</span><span>{project.id}</span></nav>
+      <div class="p-title">
+        <h1>{d.title}</h1>
+        {d.status && <span class="pill mono"><span class="status-dot"></span>{d.status}</span>}
+      </div>
+      <p class="dek">{d.description}</p>
+      <div class="p-actions">
+        <a class="btn btn-primary" href={d.repo} target="_blank" rel="noopener">View on GitHub <span class="arr">↗</span></a>
+        <a class="btn" href="/projects/">All projects</a>
+      </div>
+      <dl class="spec mono">
+        <div><dt>stack</dt><dd>{d.stack.join(' · ')}</dd></div>
+        {d.version && <div><dt>version</dt><dd>{d.version}</dd></div>}
+        {d.license && <div><dt>license</dt><dd>{d.license}</dd></div>}
+        <div><dt>repo</dt><dd><a href={d.repo} target="_blank" rel="noopener">{d.repo.replace('https://github.com/', '')}</a></dd></div>
+      </dl>
+    </div>
+  </header>
+
+  <div class="container">
+    {d.cover && (
+      <figure class="cover term">
+        <div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="mono">{d.short ?? project.id}</span></div>
+        <img src={d.cover} alt={d.coverAlt ?? ''} data-zoom width="1380" height="860" />
+      </figure>
+    )}
+
+    <div class="p-grid">
+      <article class="prose" data-article>
+        <Content />
+      </article>
+      {d.highlights.length > 0 && (
+        <aside class="hl-box">
+          <p class="mono hl-title">Key capabilities</p>
+          <ul>{d.highlights.map((h) => <li>{h}</li>)}</ul>
+        </aside>
+      )}
+    </div>
+
+    {d.screenshots.length > 0 && (
+      <section class="shots" aria-labelledby="shots-h">
+        <h2 id="shots-h"><span>##</span> Screenshots</h2>
+        <p class="note mono">From the repository's docs/screenshots. Use the arrows, swipe, or click a screenshot to enlarge it.</p>
+        <Slideshow slides={d.screenshots} label={`${d.short ?? d.title} screenshots`} />
+      </section>
+    )}
+  </div>
+  <Lightbox />
+</BaseLayout>
+
+<script>
+  import '../../scripts/article.ts';
+</script>
+
+<style>
+  .p-head { padding: 56px 0 36px; }
+  .crumbs { font-size: 12.5px; color: var(--text-3); display: flex; gap: 8px; }
+  .crumbs a { color: var(--text-2); }
+  .p-title { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 18px; }
+  .p-title h1 { font-size: clamp(28px, 4.2vw, 46px); letter-spacing: -0.03em; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--green); border: 1px solid rgba(53, 217, 138, 0.3); border-radius: 999px; padding: 5px 11px; }
+  .dek { color: var(--text-2); font-size: 17.5px; max-width: 72ch; margin: 16px 0 0; }
+  .p-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 26px; }
+  .spec { margin: 28px 0 0; display: grid; gap: 8px; font-size: 13px; }
+  .spec div { display: grid; grid-template-columns: 90px 1fr; gap: 12px; }
+  .spec dt { color: var(--text-3); }
+  .spec dd { margin: 0; color: var(--text-2); }
+
+  .cover { margin: 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .cover .bar { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--bg-2); font-size: 12px; color: var(--text-3); }
+  .dots { display: inline-flex; gap: 6px; }
+  .dots i { width: 9px; height: 9px; border-radius: 50%; border: 1px solid #3a4b60; display: block; }
+  .cover img { cursor: zoom-in; width: 100%; }
+
+  .p-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 56px; margin-top: 56px; align-items: start; }
+  .hl-box { position: sticky; top: calc(var(--header-h) + 24px); border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); padding: 20px; }
+  .hl-title { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--text-3); margin: 0 0 12px; }
+  .hl-box ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; font-size: 14px; color: var(--text-2); }
+  .hl-box li { padding-left: 16px; position: relative; }
+  .hl-box li::before { content: '›'; position: absolute; left: 0; color: var(--green); font-family: var(--font-mono); }
+
+  .shots { margin-top: 80px; }
+  .shots h2 { font-size: 24px; }
+  .shots h2 span { color: var(--green); font-weight: 400; font-size: 0.8em; }
+  .note { font-size: 12.5px; color: var(--text-3); margin: 8px 0 22px; }
+
+  @media (max-width: 1000px) {
+    .p-grid { grid-template-columns: 1fr; gap: 28px; }
+    .hl-box { position: static; order: -1; }
+    }
+</style>
