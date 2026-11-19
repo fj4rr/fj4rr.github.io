@@ -47,6 +47,8 @@ const projects = defineCollection({
     short: z.string().optional(),
     description: z.string(),
     repo: z.string().url(),
+    /** Documentation site of the project, shown next to the repository link. */
+    docs: z.string().url().optional(),
     stack: z.array(z.string()).default([]),
     /** Only set what can be verified from the repository. */
     status: z.string().optional(),

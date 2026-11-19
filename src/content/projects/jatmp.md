@@ -3,9 +3,10 @@ title: "Just Another Threat Monitoring Platform"
 short: "JATMP"
 description: "A self-hosted platform for monitoring cyber threats and online fraud as they emerge: malware and ransomware campaigns, threat actors, vulnerabilities, indicators of compromise, attacks on critical infrastructure sectors, and the scams aimed at the public. Two dashboards, one for cyber threats and one for scams and fraud, with an International and a National (Indonesia) view."
 repo: "https://github.com/fj4rr/just-another-threat-monitoring-platform"
+docs: "https://fj4rr.github.io/just-another-threat-monitoring-platform/"
 stack: ["Python 3.11+", "FastAPI", "SQLAlchemy", "SQLite / PostgreSQL", "Jinja2", "APScheduler", "Docker"]
-status: "Active · v0.13.1"
-version: "0.13.1"
+status: "Active · v0.14.0"
+version: "0.14.0"
 license: "MIT (pyproject.toml)"
 featured: true
 order: 1
@@ -25,7 +26,7 @@ highlights:
   - "Single process with SQLite, no JavaScript build step and nothing loaded from a CDN"
 screenshots:
   - { src: "/images/projects/jatmp/dashboard-overview.png", caption: "Cyber threats dashboard" }
-  - { src: "/images/projects/jatmp/dashboard.png", caption: "Dashboard: period switch, International / National (ID) switch, threat radar with families, CVEs and actors, globe of the top 10 target countries and KPI tiles" }
+  - { src: "/images/projects/jatmp/dashboard.png", caption: "Dashboard: the collapsible, grouped menu, period switch, International / National (ID) switch, threat radar with families, CVEs and actors, globe of the top 10 target countries and KPI tiles" }
   - { src: "/images/projects/jatmp/dashboard-widgets.png", caption: "Trending malware, CVEs (CISA KEV, CVSS, EPSS, risk-weighted priority) and threat actors over the chosen period" }
   - { src: "/images/projects/jatmp/dashboard-sectors.png", caption: "Top 5 trending over time next to the critical infrastructure sectors of the period" }
   - { src: "/images/projects/jatmp/fraud.png", caption: "Scams & fraud dashboard: reports over time by scam type, most targeted countries, trending scam types, impersonated brands and the latest identifiers" }
@@ -38,7 +39,7 @@ screenshots:
   - { src: "/images/projects/jatmp/entity.png", caption: "Malware family page: timeline, coverage per source, deep dive, graph, co-mentioned entities" }
   - { src: "/images/projects/jatmp/iocs.png", caption: "IOC table with verdicts, hosting countries, attributed families and where each indicator was seen" }
   - { src: "/images/projects/jatmp/malware.png", caption: "Malware families: unified table with trend score, related entities and pagination" }
-  - { src: "/images/projects/jatmp/cves.png", caption: "CVE list sorted by EPSS, with KEV badges and co-mentioned families" }
+  - { src: "/images/projects/jatmp/cves.png", caption: "CVE list sorted by EPSS, with KEV badges, co-mentioned families and the New threats button" }
   - { src: "/images/projects/jatmp/backfill.png", caption: "Historical backfill: per-source reach and method, estimates and storage statistics" }
   - { src: "/images/projects/jatmp/settings.png", caption: "AI settings: local or cloud, vendor presets and a live model list" }
   - { src: "/images/projects/jatmp/reports.png", caption: "Report builder: period, content and format for the Threat Intel Findings document" }
@@ -63,7 +64,20 @@ It runs as a single process with SQLite by default. There is no JavaScript build
 - **History**: backfill up to a year back, retention tiers, full-text search and optional PostgreSQL.
 - **Operation**: single-user or multi-user with roles, live job progress, a notification center, a side preview on every table, dark and light themes and a phone layout.
 
-## Latest release: 0.13.1
+## Latest release: 0.14.0
+
+Easier navigation, with every screenshot retaken for it:
+
+- **Feed filters stay** when you pick another one, for the whole session, until *Clear filters*; a chip under the filter bar removes a single entity, country or province.
+- **Tidier menu**: Cyber threats, Scams & fraud and Feed on top, Intelligence, Analysis and Manage as dropdowns, and the whole menu collapses to an icon rail.
+- **New threats** button on the Intelligence lists (malware, threat actors, CVEs, IOCs, scam types and impersonated brands) keeps only what was first seen in the chosen period.
+- **Fixes**: the default urlscan.io source now searches `task.tags:malicious`, which free accounts allow (the old query failed with 403), and two enrichment failures are gone (a duplicate entity link and a crash in the final summary).
+- Higher minimum versions of `anthropic`, `feedparser`, `python-docx`, `psycopg` and `telethon`.
+- Docs reviewed against the release: the settings tab is now *Sharing & API*, and the IOC page's *Enrichment* panel, *Run enrichment batch* and *Copy visible* buttons are described.
+
+Upgrade notes are in [Upgrading](https://fj4rr.github.io/just-another-threat-monitoring-platform/upgrading/); see [Using JATMP](https://fj4rr.github.io/just-another-threat-monitoring-platform/using-jatmp/) for the new menu, filters and *New threats* button.
+
+## Release 0.13.1
 
 Rule tuning from the first quality report. Every fix comes with the case that motivated it and counter-examples that must not change:
 
