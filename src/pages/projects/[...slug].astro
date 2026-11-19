@@ -26,6 +26,7 @@ const d = project.data;
       <p class="dek">{d.description}</p>
       <div class="p-actions">
         <a class="btn btn-primary" href={d.repo} target="_blank" rel="noopener">View on GitHub <span class="arr">↗</span></a>
+        {d.docs && <a class="btn" href={d.docs} target="_blank" rel="noopener">Documentation <span class="arr">↗</span></a>}
         <a class="btn" href="/projects/">All projects</a>
       </div>
       <dl class="spec mono">
@@ -33,6 +34,7 @@ const d = project.data;
         {d.version && <div><dt>version</dt><dd>{d.version}</dd></div>}
         {d.license && <div><dt>license</dt><dd>{d.license}</dd></div>}
         <div><dt>repo</dt><dd><a href={d.repo} target="_blank" rel="noopener">{d.repo.replace('https://github.com/', '')}</a></dd></div>
+        {d.docs && <div><dt>docs</dt><dd><a href={d.docs} target="_blank" rel="noopener">{d.docs.replace(/^https?:\/\//, '').replace(/\/$/, '')}</a></dd></div>}
       </dl>
     </div>
   </header>

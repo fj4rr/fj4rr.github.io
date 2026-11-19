@@ -3,6 +3,7 @@ title: "Just Another Threat Monitoring Platform"
 short: "JATMP"
 description: "A self-hosted platform for monitoring cyber threats and online fraud as they emerge: malware and ransomware campaigns, threat actors, vulnerabilities, indicators of compromise, attacks on critical infrastructure sectors, and the scams aimed at the public. Two dashboards, one for cyber threats and one for scams and fraud, with an International and a National (Indonesia) view."
 repo: "https://github.com/fj4rr/just-another-threat-monitoring-platform"
+docs: "https://fj4rr.github.io/just-another-threat-monitoring-platform/"
 stack: ["Python 3.11+", "FastAPI", "SQLAlchemy", "SQLite / PostgreSQL", "Jinja2", "APScheduler", "Docker"]
 status: "Active · v0.13.1"
 version: "0.13.1"
@@ -62,6 +63,16 @@ It runs as a single process with SQLite by default. There is no JavaScript build
 - **Reporting and AI**: a *Threat Intel Findings* report as PDF, Word, Markdown or CSV, and optional summaries, briefs, a daily executive summary and Q&A from a local or cloud LLM.
 - **History**: backfill up to a year back, retention tiers, full-text search and optional PostgreSQL.
 - **Operation**: single-user or multi-user with roles, live job progress, a notification center, a side preview on every table, dark and light themes and a phone layout.
+
+## Since 0.13.1 (on main, not yet released)
+
+- **Feed filters stay** when you pick another one, for the whole session, until *Clear filters*; a chip under the filter bar removes a single entity, country or province.
+- **Tidier menu**: Cyber threats, Scams & fraud and Feed on top, Intelligence, Analysis and Manage as dropdowns, and the whole menu collapses to an icon rail.
+- **New threats** button on the Intelligence lists (malware, threat actors, CVEs, IOCs, scam types and impersonated brands) keeps only what was first seen in the chosen period.
+- **Fixes**: the default urlscan.io source now searches `task.tags:malicious`, which free accounts allow (the old query failed with 403), and two enrichment failures are gone (a duplicate entity link and a crash in the final summary).
+- Higher minimum versions of `anthropic`, `feedparser`, `python-docx`, `psycopg` and `telethon`.
+
+See [Using JATMP](https://fj4rr.github.io/just-another-threat-monitoring-platform/using-jatmp/) for the new menu, filters and *New threats* button.
 
 ## Latest release: 0.13.1
 
