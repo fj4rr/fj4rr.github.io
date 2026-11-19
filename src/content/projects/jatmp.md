@@ -4,8 +4,8 @@ short: "JATMP"
 description: "A self-hosted platform for monitoring cyber threats and online fraud as they emerge: malware and ransomware campaigns, threat actors, vulnerabilities, indicators of compromise, attacks on critical infrastructure sectors, and the scams aimed at the public. Two dashboards, one for cyber threats and one for scams and fraud, with an International and a National (Indonesia) view."
 repo: "https://github.com/fj4rr/just-another-threat-monitoring-platform"
 stack: ["Python 3.11+", "FastAPI", "SQLAlchemy", "SQLite / PostgreSQL", "Jinja2", "APScheduler", "Docker"]
-status: "Active · v0.10.1"
-version: "0.10.1"
+status: "Active · v0.13.1"
+version: "0.13.1"
 license: "MIT (pyproject.toml)"
 featured: true
 order: 1
@@ -19,7 +19,9 @@ highlights:
   - "Items tagged with Indonesia's critical infrastructure sectors (Perpres 82/2022)"
   - "Scam tracking: scam types, impersonated banks and e-wallets, scammer identifiers and losses in rupiah"
   - "REST API, IOC blocklist feeds, STIX 2.1 / TAXII 2.1, signed webhooks and two-way MISP"
-  - "Outbound guard, encrypted secrets and pinned, audited dependencies (0.10.1)"
+  - "Analyst corrections with an audit trail, and rule quality measured with precision and recall on labelled cases (0.13)"
+  - "One counting rule: a story carried by several outlets counts once in every figure; verdicts that age and are re-checked (0.12)"
+  - "Outbound guard, encrypted secrets and pinned, audited dependencies"
   - "Single process with SQLite, no JavaScript build step and nothing loaded from a CDN"
 screenshots:
   - { src: "/images/projects/jatmp/dashboard-overview.png", caption: "Cyber threats dashboard" }
@@ -61,25 +63,38 @@ It runs as a single process with SQLite by default. There is no JavaScript build
 - **History**: backfill up to a year back, retention tiers, full-text search and optional PostgreSQL.
 - **Operation**: single-user or multi-user with roles, live job progress, a notification center, a side preview on every table, dark and light themes and a phone layout.
 
-## Latest release: 0.10.1
+## Latest release: 0.13.1
 
-Fixes from a security, data-processing and efficiency audit:
+Rule tuning from the first quality report. Every fix comes with the case that motivated it and counter-examples that must not change:
 
-- **Security**: an outbound guard on every request JATMP makes on its own (public addresses only unless allow-listed, checked on every redirect, no DNS rebinding, response bodies capped), API keys and the AI key stored encrypted, a one-time token for first-run setup from another machine, scammer identifiers never returned by the REST API, CSV exports that cannot run as spreadsheet formulas, bounded AI output, per-user rate limits on enrichment and AI, and pinned dependencies checked with `pip-audit`.
-- **Data processing**: stricter rules for scammer identifiers, scam phrases, sectors and family names that are everyday words; syndicated copies of a story are counted once in trends and the executive summary; amounts such as "Rp 2,5 T" are read as trillions of rupiah.
-- **Efficiency**: new database indexes, one query per page for item entities, cached trending lists, AI summaries in their own job, and a full-text index on PostgreSQL.
+- **Indicators**: "server 91.92.243.10" is no longer read as a version number, public DNS resolvers (`8.8.8.8`, `1.1.1.1`…) are not indicators, and on paste and file-sharing services (Pastebin, GitHub, Google Drive, Dropbox, MEGA…) the URL of the paste or file is the indicator, not the service's domain.
+- **Families**: a name that is also an everyday word counts when written in its own distinctive spelling ("RedLine", "Cl0p", "SafePay").
+- **Geography, scams, sectors and severity**: marketplaces and hosting are no longer targets; scam phrases such as "mengaku dari Bea Cukai / polisi / bank", fake QRIS stickers, smishing and fake sellers are recognised; fuel stations (SPBU) are energy; severity picks up service disruption, the scale of a leak, data put up for sale and stolen credentials.
+- **Quality on the seed set** (172 cases): precision and recall 1.000 for families, indicators, scams, sectors and severity; geography precision 1.000, recall 0.955.
 
-A developer guide (development, architecture, data model, extending JATMP) was added to the documentation. Since the release, the AI prompts cover cyber threats and online fraud rather than only malware, and dependencies are kept current by Dependabot.
+## Release 0.13.0
 
-## Release 0.10.0
+- **Analyst corrections**: analysts can mark an entity as wrong on one item or everywhere, set an analyst verdict that wins over the providers, and mark an item as not a scam report. Each correction needs a reason, is logged with the analyst's name, can be undone, and stays in force through re-extraction, AI extraction and enrichment. A new *Corrections* page shows the log, the error rate per area and the names corrected most often.
+- **Quality measurement**: `python manage.py quality` reports precision, recall and F1 of the extractor, scam rules, sectors, target countries and severity on labelled cases, and CI fails when an area drops below the baseline.
+- **Topic filters** (`security`, `cyber`, `fraud`) for every news and social source, including Telegram, X, Mastodon and Bluesky.
+- **Better Q&A**: questions find items by the entities, malware types, sectors and periods they name, and answers cite their items as links.
 
-- **Two dashboards**: *Cyber threats* and a new *Scams & fraud* dashboard with scam reports over time, a globe of the most targeted countries or provinces, KPI tiles, trending scam types, impersonated brands and the latest scammer identifiers.
-- **Dashboard period**: 7 or 15 days, 30 days, 3 or 6 months, or 1 year. Every tile, chart, the radar and the globe follow it.
-- **Critical infrastructure sectors**: every item is tagged with the sectors of Indonesia's Perpres 82/2022 it is about (government, energy, transportation, finance, health, ICT, food, defence).
-- **Executive summary** instead of the long AI digest: a headline, an overall threat level, key points and up to three actions for today.
-- Faster scam and blocklist processing, and a cleaner Backfill page.
+## Releases 0.11.0 and 0.12.0
 
-Earlier releases also added the Telegram collector and the scam & fraud section (0.9.0), more Indonesian general news sources (0.9.1) and a reworked dashboard with the threat radar and globe (0.8.2). See the [changelog](https://github.com/fj4rr/just-another-threat-monitoring-platform/blob/main/CHANGELOG.md) for details.
+Two releases from a product review, about trust in the numbers and operations:
+
+- **One counting rule** (0.12): a story carried by several outlets counts once in every figure, from KPI tiles to reports. The feed lists each story once and shows its syndicated copies on request (0.11).
+- **Severity you can compare**: a rules version re-scores stored items once when the rules change, and re-scoring keeps enrichment bonuses and AI assessments.
+- **Verdicts that age**: indicators show "verdict as of …", malicious IPs, domains and URLs are re-checked after 30 days and leave the export feeds and TAXII after 60 days without confirmation.
+- **Source health and enrichment queue**: last new item and usual rate per source, alerts for sources that went quiet or keep failing, lookups used against each provider's daily budget, and every provider queried at its own pace.
+- **Personal data out of cloud prompts**: phone and e-wallet numbers, bank accounts, ID numbers and e-mail addresses are replaced with placeholders before a prompt goes to a cloud model.
+- **Operations**: a time zone and times for the daily jobs, and a TLP on every new source.
+
+The documentation gained a [How it works](https://fj4rr.github.io/just-another-threat-monitoring-platform/how-it-works/) section that follows one article from the feed to the dashboard and explains every process with the rules and numbers it uses, including [corrections and quality](https://fj4rr.github.io/just-another-threat-monitoring-platform/how-it-works/corrections/).
+
+## Earlier releases
+
+0.10.1 came from a security, data-processing and efficiency audit: an outbound guard on every request JATMP makes on its own, encrypted API keys, a one-time token for remote first-run setup, formula-safe CSV exports, per-user rate limits, pinned dependencies checked with `pip-audit`, and new indexes and caching. 0.10.0 split the interface into the *Cyber threats* and *Scams & fraud* dashboards, added the dashboard period, the critical infrastructure sectors of Perpres 82/2022 and the executive summary. Before that came the Telegram collector and the scam & fraud section (0.9.0), more Indonesian general news sources (0.9.1) and the reworked dashboard with the threat radar and globe (0.8.2). See the [changelog](https://github.com/fj4rr/just-another-threat-monitoring-platform/blob/main/CHANGELOG.md) for details.
 
 ## Running it
 
@@ -93,4 +108,4 @@ python run.py                  # open http://127.0.0.1:8000
 
 Or with Docker: copy `.env.example` to `.env` and run `docker compose up -d --build`.
 
-The full documentation, including the new developer guide ([architecture](https://fj4rr.github.io/just-another-threat-monitoring-platform/architecture/), [data model](https://fj4rr.github.io/just-another-threat-monitoring-platform/data-model/), [extending JATMP](https://fj4rr.github.io/just-another-threat-monitoring-platform/extending/)), is on the [JATMP docs site](https://fj4rr.github.io/just-another-threat-monitoring-platform/).
+The full documentation, including [How it works](https://fj4rr.github.io/just-another-threat-monitoring-platform/how-it-works/) and the developer guide ([architecture](https://fj4rr.github.io/just-another-threat-monitoring-platform/architecture/), [data model](https://fj4rr.github.io/just-another-threat-monitoring-platform/data-model/), [extending JATMP](https://fj4rr.github.io/just-another-threat-monitoring-platform/extending/)), is on the [JATMP docs site](https://fj4rr.github.io/just-another-threat-monitoring-platform/).
