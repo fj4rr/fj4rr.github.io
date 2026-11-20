@@ -64,6 +64,17 @@ It runs as a single process with SQLite by default. There is no JavaScript build
 - **History**: backfill up to a year back, retention tiers, full-text search and optional PostgreSQL.
 - **Operation**: single-user or multi-user with roles, live job progress, a notification center, a side preview on every table, dark and light themes and a phone layout.
 
+## Since 0.14.0 (on main, not yet released)
+
+Fixes for false correlations:
+
+- **Newsletters no longer tie unrelated items together.** A weekly digest such as Cisco Talos *Threat Source* lists the same hashes, CVEs and stories as every other issue, which linked it to many unrelated posts. Digests are now recognised by tag, title wording and newsletter boilerplate, marked *digest*, weigh far less in *Related items*, and are skipped in *Mentioned together with*, a family's indicators and the list chips.
+- **Version numbers are no longer read as IP addresses** ("12.1.0.0 through 12.1.1.2"), and a git commit in a page title is no longer taken for a SHA-1 hash. `python manage.py ioc-clean` removes such links from stored items (dry run first, then `--apply`).
+- **The relationship graph explains its lines**: a legend row shows *Mentions*, *Provider link*, *Also mentions* and *Mentioned together*, with whose claim each one is and which need validation. On an indicator's page, *Linked by enrichment* comes first and co-mentions are labelled *Seen in the same items as*.
+- `manage.py reextract` no longer deletes entities that only a feed linked.
+
+See [Trends and correlation](https://fj4rr.github.io/just-another-threat-monitoring-platform/how-it-works/trends/) for how digests are recognised and discounted.
+
 ## Latest release: 0.14.0
 
 Easier navigation, with every screenshot retaken for it:
