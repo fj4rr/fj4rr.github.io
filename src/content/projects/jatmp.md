@@ -5,9 +5,9 @@ description: "A self-hosted platform for monitoring cyber threats and online fra
 repo: "https://github.com/fj4rr/just-another-threat-monitoring-platform"
 docs: "https://fj4rr.github.io/just-another-threat-monitoring-platform/"
 stack: ["Python 3.11+", "FastAPI", "SQLAlchemy", "SQLite / PostgreSQL", "Jinja2", "APScheduler", "Docker"]
-status: "Active · v0.14.0"
-version: "0.14.0"
-license: "MIT (pyproject.toml)"
+status: "Active · v1.0.0"
+version: "1.0.0"
+license: "MIT"
 featured: true
 order: 1
 tags: ["Threat Intelligence", "Security Tools", "Network Analysis"]
@@ -18,8 +18,9 @@ highlights:
   - "Two dashboards: Cyber threats and Scams & fraud, with periods from 7 days to a year"
   - "Explainable 0–100 severity score, cross-provider verdicts, relationship graph and CVE context from CISA KEV, EPSS and NVD"
   - "Items tagged with Indonesia's critical infrastructure sectors (Perpres 82/2022)"
-  - "Scam tracking: scam types, impersonated banks and e-wallets, scammer identifiers and losses in rupiah"
+  - "Scam tracking with its own feed: scam types, impersonated banks, e-wallets and public figures, scammer identifiers and losses in rupiah"
   - "REST API, IOC blocklist feeds, STIX 2.1 / TAXII 2.1, signed webhooks and two-way MISP"
+  - "First public release (1.0.0): MIT licence, security policy, contribution guidelines and semantic versioning from here on"
   - "Analyst corrections with an audit trail, and rule quality measured with precision and recall on labelled cases (0.13)"
   - "One counting rule: a story carried by several outlets counts once in every figure; verdicts that age and are re-checked (0.12)"
   - "Outbound guard, encrypted secrets and pinned, audited dependencies"
@@ -30,7 +31,7 @@ screenshots:
   - { src: "/images/projects/jatmp/dashboard-widgets.png", caption: "Trending malware, CVEs (CISA KEV, CVSS, EPSS, risk-weighted priority) and threat actors over the chosen period" }
   - { src: "/images/projects/jatmp/dashboard-sectors.png", caption: "Top 5 trending over time next to the critical infrastructure sectors of the period" }
   - { src: "/images/projects/jatmp/fraud.png", caption: "Scams & fraud dashboard: reports over time by scam type, most targeted countries, trending scam types, impersonated brands and the latest identifiers" }
-  - { src: "/images/projects/jatmp/fraud-items.png", caption: "Scam reports ranked by fraud score, with losses in rupiah, scam types and brands" }
+  - { src: "/images/projects/jatmp/fraud-items.png", caption: "Scams & fraud feed: scam reports ranked by fraud score, with losses in rupiah, scam types and brands" }
   - { src: "/images/projects/jatmp/feed-preview.png", caption: "Feed with the side preview: severity breakdown, entities and indicators without leaving the list" }
   - { src: "/images/projects/jatmp/item.png", caption: "Item page: severity, STIX export, extracted entities with their verdicts" }
   - { src: "/images/projects/jatmp/graph.png", caption: "Relationship graph: the item, its entities and the other items that share them" }
@@ -58,24 +59,34 @@ It runs as a single process with SQLite by default. There is no JavaScript build
 - **Collection** from 14 English news feeds and 25 Indonesian ones (tech and general news), about 30 Bluesky and Mastodon accounts, X, public Telegram channels (no account needed), OTX, urlscan.io, ANY.RUN, ThreatFox, MISP and ransomware.live. Any RSS feed, account or channel can be added.
 - **Analysis**: entity extraction with defang handling, an explainable 0–100 severity score, cross-provider verdict consensus (VirusTotal, OTX, abuse.ch, GreyNoise, AbuseIPDB and more), a relationship graph, on-demand infrastructure context, trend scoring over 7 days to a year, critical infrastructure sectors and CVE context from CISA KEV, FIRST EPSS and NVD.
 - **Geography**: target, source and hosting countries kept apart, Indonesian provinces, an International / National (ID) switch and Bahasa Indonesia support.
-- **Scams and fraud**: scam types, impersonated banks, e-wallets and government bodies, scammer phone numbers, accounts and wallets (kept to a minimum under UU PDP), losses in rupiah and a separate fraud score, from news, fact-checkers, FBI IC3 and the ScamSniffer blocklist, on their own dashboard.
+- **Scams and fraud**: scam types, impersonated banks, e-wallets, government bodies and public figures, scammer phone numbers, accounts and wallets (kept to a minimum under UU PDP), losses in rupiah and a separate fraud score, from news, fact-checkers, FBI IC3 and the ScamSniffer blocklist, on their own dashboard and feed.
 - **Sharing**: REST API with API keys, IOC blocklist feeds, STIX 2.1 / TAXII 2.1, signed webhooks (Slack, Discord, Teams) and two-way MISP, all behind TLP sharing rules.
 - **Reporting and AI**: a *Threat Intel Findings* report as PDF, Word, Markdown or CSV, and optional summaries, briefs, a daily executive summary and Q&A from a local or cloud LLM.
 - **History**: backfill up to a year back, retention tiers, full-text search and optional PostgreSQL.
 - **Operation**: single-user or multi-user with roles, live job progress, a notification center, a side preview on every table, dark and light themes and a phone layout.
 
-## Latest release: 0.14.0
+## Latest release: 1.0.0
 
-Easier navigation, with every screenshot retaken for it:
+The **first public release**. JATMP is now released under the MIT License, and from this version on releases follow [semantic versioning](https://semver.org/). Upgrading from 0.14.1 is just a restart: no schema change and no re-analysis.
 
-- **Feed filters stay** when you pick another one, for the whole session, until *Clear filters*; a chip under the filter bar removes a single entity, country or province.
-- **Tidier menu**: Cyber threats, Scams & fraud and Feed on top, Intelligence, Analysis and Manage as dropdowns, and the whole menu collapses to an icon rail.
-- **New threats** button on the Intelligence lists (malware, threat actors, CVEs, IOCs, scam types and impersonated brands) keeps only what was first seen in the chosen period.
-- **Fixes**: the default urlscan.io source now searches `task.tags:malicious`, which free accounts allow (the old query failed with 403), and two enrichment failures are gone (a duplicate entity link and a crash in the final summary).
-- Higher minimum versions of `anthropic`, `feedparser`, `python-docx`, `psycopg` and `telethon`.
-- Docs reviewed against the release: the settings tab is now *Sharing & API*, and the IOC page's *Enrichment* panel, *Run enrichment batch* and *Copy visible* buttons are described.
+- **Project**: an MIT `LICENSE` with third-party notices (Chart.js, Natural Earth, DB-IP / MaxMind GeoLite2, provider terms), a `SECURITY.md` with supported versions, private reporting through GitHub's *Report a vulnerability* form, response times and scope, plus `CONTRIBUTING.md`, a code of conduct, issue forms (bug, wrong or missed detection, feature or source) and a pull request checklist. The version now lives in one place.
+- **A busy AI model no longer costs the executive summary**: the scheduled run is queued again 20 and then 60 minutes later, and *Summarise*, *Write brief*, *AI summary* and *Ask* answer 503 with the provider's own message instead of a 400 as if the request were wrong.
+- **Docs**: a new [Known limitations](https://fj4rr.github.io/just-another-threat-monitoring-platform/limitations/) page (single process, feed-text-only analysis, rule-based detection and what its quality numbers mean, word-based Q&A, no single sign-on), and a quick start that installs from the lock file.
 
-Upgrade notes are in [Upgrading](https://fj4rr.github.io/just-another-threat-monitoring-platform/upgrading/); see [Using JATMP](https://fj4rr.github.io/just-another-threat-monitoring-platform/using-jatmp/) for the new menu, filters and *New threats* button.
+Upgrade notes are in [Upgrading](https://fj4rr.github.io/just-another-threat-monitoring-platform/upgrading/).
+
+## Release 0.14.1
+
+- **Scams get their own feed**: *Feed → Scams & fraud* sits next to cyber threats, like the two dashboards.
+- **Impersonated people**: scams that borrow a public figure (a deepfake giveaway, *mencatut nama* a minister, fake accounts of a governor) now name that person; the page is now *Brands & people*.
+- **Fewer false scam brands**: a brand that blocks, reports or warns about a scam, or publishes its own advisory, is no longer listed as impersonated, and "anti-scam" is no longer a scam word.
+- **Fewer false correlations**: newsletters and round-ups are flagged as digests and no longer tie unrelated items together, version numbers in advisories are no longer read as IP addresses, and git commits are not taken for SHA-1 hashes (`manage.py ioc-clean` fixes stored items).
+- **Sturdier AI summary**: an answer cut off by the token limit is repaired instead of showing raw JSON, and a busy provider is retried.
+- The relationship graph's legend explains each kind of line and whose claim it is.
+
+## Release 0.14.0
+
+Easier navigation, with every screenshot retaken for it: feed filters that stay for the session, a tidier menu that collapses to an icon rail, a *New threats* button on the Intelligence lists, and a working default urlscan.io query for free accounts.
 
 ## Release 0.13.1
 
@@ -115,7 +126,7 @@ The documentation gained a [How it works](https://fj4rr.github.io/just-another-t
 ```bash
 python -m venv .venv
 source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements.txt -c requirements.lock
 python install.py              # interactive: single / multi user, API keys, LLM
 python run.py                  # open http://127.0.0.1:8000
 ```
