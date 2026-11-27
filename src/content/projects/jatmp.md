@@ -20,9 +20,9 @@ highlights:
   - "Items tagged with Indonesia's critical infrastructure sectors (Perpres 82/2022)"
   - "Scam tracking with its own feed: scam types, impersonated banks, e-wallets and public figures, scammer identifiers and losses in rupiah"
   - "REST API, IOC blocklist feeds, STIX 2.1 / TAXII 2.1, signed webhooks and two-way MISP"
-  - "First public release (1.0.0): MIT licence, security policy, contribution guidelines and semantic versioning from here on"
-  - "Analyst corrections with an audit trail, and rule quality measured with precision and recall on labelled cases (0.13)"
-  - "One counting rule: a story carried by several outlets counts once in every figure; verdicts that age and are re-checked (0.12)"
+  - "First public release: MIT licence, security policy, contribution guidelines and semantic versioning from here on"
+  - "Analyst corrections with an audit trail, and rule quality measured with precision and recall on labelled cases"
+  - "One counting rule: a story carried by several outlets counts once in every figure; verdicts that age and are re-checked"
   - "Outbound guard, encrypted secrets and pinned, audited dependencies"
   - "Single process with SQLite, no JavaScript build step and nothing loaded from a CDN"
 screenshots:
@@ -73,53 +73,7 @@ The **first public release**. JATMP is now released under the MIT License, and f
 - **A busy AI model no longer costs the executive summary**: the scheduled run is queued again 20 and then 60 minutes later, and *Summarise*, *Write brief*, *AI summary* and *Ask* answer 503 with the provider's own message instead of a 400 as if the request were wrong.
 - **Docs**: a new [Known limitations](https://fj4rr.github.io/just-another-threat-monitoring-platform/limitations/) page (single process, feed-text-only analysis, rule-based detection and what its quality numbers mean, word-based Q&A, no single sign-on), and a quick start that installs from the lock file.
 
-Upgrade notes are in [Upgrading](https://fj4rr.github.io/just-another-threat-monitoring-platform/upgrading/).
-
-## Release 0.14.1
-
-- **Scams get their own feed**: *Feed → Scams & fraud* sits next to cyber threats, like the two dashboards.
-- **Impersonated people**: scams that borrow a public figure (a deepfake giveaway, *mencatut nama* a minister, fake accounts of a governor) now name that person; the page is now *Brands & people*.
-- **Fewer false scam brands**: a brand that blocks, reports or warns about a scam, or publishes its own advisory, is no longer listed as impersonated, and "anti-scam" is no longer a scam word.
-- **Fewer false correlations**: newsletters and round-ups are flagged as digests and no longer tie unrelated items together, version numbers in advisories are no longer read as IP addresses, and git commits are not taken for SHA-1 hashes (`manage.py ioc-clean` fixes stored items).
-- **Sturdier AI summary**: an answer cut off by the token limit is repaired instead of showing raw JSON, and a busy provider is retried.
-- The relationship graph's legend explains each kind of line and whose claim it is.
-
-## Release 0.14.0
-
-Easier navigation, with every screenshot retaken for it: feed filters that stay for the session, a tidier menu that collapses to an icon rail, a *New threats* button on the Intelligence lists, and a working default urlscan.io query for free accounts.
-
-## Release 0.13.1
-
-Rule tuning from the first quality report. Every fix comes with the case that motivated it and counter-examples that must not change:
-
-- **Indicators**: "server 91.92.243.10" is no longer read as a version number, public DNS resolvers (`8.8.8.8`, `1.1.1.1`…) are not indicators, and on paste and file-sharing services (Pastebin, GitHub, Google Drive, Dropbox, MEGA…) the URL of the paste or file is the indicator, not the service's domain.
-- **Families**: a name that is also an everyday word counts when written in its own distinctive spelling ("RedLine", "Cl0p", "SafePay").
-- **Geography, scams, sectors and severity**: marketplaces and hosting are no longer targets; scam phrases such as "mengaku dari Bea Cukai / polisi / bank", fake QRIS stickers, smishing and fake sellers are recognised; fuel stations (SPBU) are energy; severity picks up service disruption, the scale of a leak, data put up for sale and stolen credentials.
-- **Quality on the seed set** (172 cases): precision and recall 1.000 for families, indicators, scams, sectors and severity; geography precision 1.000, recall 0.955.
-
-## Release 0.13.0
-
-- **Analyst corrections**: analysts can mark an entity as wrong on one item or everywhere, set an analyst verdict that wins over the providers, and mark an item as not a scam report. Each correction needs a reason, is logged with the analyst's name, can be undone, and stays in force through re-extraction, AI extraction and enrichment. A new *Corrections* page shows the log, the error rate per area and the names corrected most often.
-- **Quality measurement**: `python manage.py quality` reports precision, recall and F1 of the extractor, scam rules, sectors, target countries and severity on labelled cases, and CI fails when an area drops below the baseline.
-- **Topic filters** (`security`, `cyber`, `fraud`) for every news and social source, including Telegram, X, Mastodon and Bluesky.
-- **Better Q&A**: questions find items by the entities, malware types, sectors and periods they name, and answers cite their items as links.
-
-## Releases 0.11.0 and 0.12.0
-
-Two releases from a product review, about trust in the numbers and operations:
-
-- **One counting rule** (0.12): a story carried by several outlets counts once in every figure, from KPI tiles to reports. The feed lists each story once and shows its syndicated copies on request (0.11).
-- **Severity you can compare**: a rules version re-scores stored items once when the rules change, and re-scoring keeps enrichment bonuses and AI assessments.
-- **Verdicts that age**: indicators show "verdict as of …", malicious IPs, domains and URLs are re-checked after 30 days and leave the export feeds and TAXII after 60 days without confirmation.
-- **Source health and enrichment queue**: last new item and usual rate per source, alerts for sources that went quiet or keep failing, lookups used against each provider's daily budget, and every provider queried at its own pace.
-- **Personal data out of cloud prompts**: phone and e-wallet numbers, bank accounts, ID numbers and e-mail addresses are replaced with placeholders before a prompt goes to a cloud model.
-- **Operations**: a time zone and times for the daily jobs, and a TLP on every new source.
-
-The documentation gained a [How it works](https://fj4rr.github.io/just-another-threat-monitoring-platform/how-it-works/) section that follows one article from the feed to the dashboard and explains every process with the rules and numbers it uses, including [corrections and quality](https://fj4rr.github.io/just-another-threat-monitoring-platform/how-it-works/corrections/).
-
-## Earlier releases
-
-0.10.1 came from a security, data-processing and efficiency audit: an outbound guard on every request JATMP makes on its own, encrypted API keys, a one-time token for remote first-run setup, formula-safe CSV exports, per-user rate limits, pinned dependencies checked with `pip-audit`, and new indexes and caching. 0.10.0 split the interface into the *Cyber threats* and *Scams & fraud* dashboards, added the dashboard period, the critical infrastructure sectors of Perpres 82/2022 and the executive summary. Before that came the Telegram collector and the scam & fraud section (0.9.0), more Indonesian general news sources (0.9.1) and the reworked dashboard with the threat radar and globe (0.8.2). See the [changelog](https://github.com/fj4rr/just-another-threat-monitoring-platform/blob/main/CHANGELOG.md) for details.
+Upgrade notes are in [Upgrading](https://fj4rr.github.io/just-another-threat-monitoring-platform/upgrading/); earlier releases are in the [changelog](https://fj4rr.github.io/just-another-threat-monitoring-platform/changelog/).
 
 ## Running it
 
